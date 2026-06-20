@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Rising Resonance - Guitar Suite</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --primary: #6200ee;
+            --accent: #03dac6;
+            --text: #ffffff;
+            --text-muted: #a0a0a5;
+            --correct: #4caf50;
+            --incorrect: #f44336;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 { margin-top: 0; color: var(--accent); margin-bottom: 5px;}
+        .subtitle { color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem;}
+
+        /* Navigation Menu tabs */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .tab-btn {
+            background: #2a2a30;
+            color: var(--text-muted);
+            border: 1px solid #444;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .module-container {
+            display: none; /* Controlled dynamically via JS */
+        }
+
+        .module-container.active {
+            display: block;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        select {
+            background: #2a2a30;
+            color: white;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .status-box {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+
+        .voice-indicator { font-weight: bold; color: var(--text-muted); margin-top: 5px; }
+        .voice-active { color: var(--accent); }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .score-val { font-size: 1.4rem; font-weight: bold; }
+        .score-val.good { color: var(--correct); }
+        .score-val.bad { color: var(--incorrect); }
+
+        .pitch-display {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin: 20px 0;
+            min-height: 70px;
+            color: var(--text-muted);
+        }
+
+        .pitch-display.detected { color: var(--accent); }
+        .pitch-display.match { color: var(--correct); }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 5px;
+        }
+        .btn:hover { filter: brightness(1.2); }
+        .btn:disabled { background-color: #444; cursor: not-allowed; }
+
+        .game-status { font-size: 1.25rem; margin: 20px 0; font-weight: 600; min-height: 35px; }
+
+        /* Module Specific Styling */
+        .degree-wheel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+        .degree-card { background: #2a2a30; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: var(--text-muted); }
+        .degree-card.active-target { border: 2px solid var(--accent); color: var(--text); }
+
+        .flashcard-prompt { font-size: 3.5rem; font-weight: bold; color: var(--accent); margin: 20px 0; }
+
+        /* Tuner Meter Graphics Layout */
+        .tuner-container { margin: 30px 0; position: relative; }
+        .tuner-meter { width: 100%; height: 8px; background: #333; border-radius: 4px; position: relative; margin-top: 15px; }
+        .tuner-needle { width: 4px; height: 24px; background: var(--accent); position: absolute; top: -8px; left: 50%; transform: translateX(-50%); transition: left 0.1s ease-out; }
+        .tuner-center-line { width: 2px; height: 16px; background: white; position: absolute; top: -4px; left: 50%; transform: translateX(-50%); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>The Rising Resonance Suite</h1>
+    <div class="subtitle">Hands-Free Guitar Audio Utilities</div>
+
+    <div class="nav-tabs">
+        <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
+        <button id="tab-note" class="tab-btn" onclick="switchModule('note')">Fretboard Note Flashcards</button>
+        <button id="tab-tuner" class="tab-btn" onclick="switchModule('tuner')">Chromatic Tuner</button>
+    </div>
+
+    <div class="status-box">
+        <button id="start-audio-btn" class="btn">Enable Microphone & Voice Control</button>
+        <div id="audio-status">Audio Stream Status: Disconnected</div>
+        <div id="voice-status" class="voice-indicator">Voice Assistant Engine: Offline</div>
+    </div>
+
+    <div class="pitch-display" id="live-note">--</div>
+    <div class="game-status" id="game-prompt">Initialize the microphone to open the tools.</div>
+
+    <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
+
+    <div id="mod-ear" class="module-container active">
+        <div class="control-row">
+            <label for="key-select">Cadence Key Context: </label>
+            <select id="key-select">
+                <option value="0">C Major</option><option value="1">C# / Db Major</option><option value="2">D Major</option>
+                <option value="3">D# / Eb Major</option><option value="4">E Major</option><option value="5">F Major</option>
+                <option value="6">F# / Gb Major</option><option value="7">G Major</option><option value="8">G# / Ab Major</option>
+                <option value="9">A Major</option><option value="10">A# / Bb Major</option><option value="11">B Major</option>
+            </select>
+            <button onclick="clearStats('ear')" style="background:none; border:none; color:var(--incorrect); cursor:pointer; font-size:0.8rem;">Reset Stats</button>
+        </div>
+        <div class="scoreboard">
+            <div>Session Points: <span id="ear-sess-ok" class="score-val good">0</span> / <span id="ear-sess-no" class="score-val bad">0</span></div>
+            <div>All-Time History: <span id="ear-all-ok" class="score-val good">0</span> / <span id="ear-all-no" class="score-val bad">0</span></div>
+        </div>
+        <button id="play-cadence-btn" class="btn" disabled>Play Cadence Triads</button>
+        <button id="next-ear-btn" class="btn" disabled>Next Tone Prompt</button>
+        <div class="degree-wheel" id="wheel-container"></div>
+    </div>
+
+    <div id="mod-note" class="module-container">
+        <p>A note name will appear. Play that specific note anywhere on your guitar strings to match it!</p>
+        <div class="scoreboard">
+            <div>Session Points: <span id="note-sess-ok" class="score-val good">0</span> / <span id="note-sess-no" class="score-val bad">0</span></div>
+            <div>All-Time History: <span id="note-all-ok" class="score-val good">0</span> / <span id="note-all-no" class="score-val bad">0</span></div>
+        </div>
+        <button id="next-note-btn" class="btn" disabled>Next Flashcard Card</button>
+        <div class="flashcard-prompt" id="flashcard-display">?</div>
+    </div>
+
+    <div id="mod-tuner" class="module-container">
+        <p>Pluck any open string cleanly to calibrate your intonation values.</p>
+        <div class="tuner-container">
+            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 10px;" id="tuner-cents">0.0 Hz</div>
+            <div class="tuner-meter">
+                <div class="tuner-center-line"></div>
+                <div class="tuner-needle" id="tuner-needle"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px; color: var(--text-muted); font-size: 0.8rem;">
+                <span>FLAT</span>
+                <span>IN TUNE</span>
+                <span>SHARP</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Global Application State Config ---
+    let audioContext = null, analyser = null, isListening = false, recognition = null;
+    let activeModule = 'ear'; // 'ear', 'note', 'tuner'
+    let gameState = "IDLE"; // IDLE, CADENCE, WAITING_FOR_ANSWER
+    
+    const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const majorScaleSteps = [0, 2, 4, 5, 7, 9, 11];
+    const degreeNames = ["1 (Do)", "2 (Re)", "3 (Mi)", "4 (Fa)", "5 (Sol)", "6 (La)", "7 (Ti)"];
+    
+    // Module Local Tracking Data Stores
+    let currentKeyIndex = 0; 
+    let currentTargetDegree = null;
+    let currentTargetNoteName = null;
+    let lastWrongNoteTime = 0;
+
+    let scores = {
+        earSessOk: 0, earSessNo: 0, noteSessOk: 0, noteSessNo: 0,
+        earAllOk: 0, earAllNo: 0, noteAllOk: 0, noteAllNo: 0
+    };
+
+    const bufferSize = 2048, buffer = new Float32Array(bufferSize);
+
+    // --- UI Connectors ---
+    const startAudioBtn = document.getElementById('start-audio-btn');
+    const playCadenceBtn = document.getElementById('play-cadence-btn');
+    const nextEarBtn = document.getElementById('next-ear-btn');
+    const nextNoteBtn = document.getElementById('next-note-btn');
+    const keySelect = document.getElementById('key-select');
+    const audioStatus = document.getElementById('audio-status');
+    const voiceStatus = document.getElementById('voice-status');
+    const gamePrompt = document.getElementById('game-prompt');
+    const liveNoteDisplay = document.getElementById('live-note');
+    const wheelContainer = document.getElementById('wheel-container');
+    const flashcardDisplay = document.getElementById('flashcard-display');
+    const tunerNeedle = document.getElementById('tuner-needle');
+    const tunerCents = document.getElementById('tuner-cents');
+
+    // --- Boot Sequences ---
+    loadStatsAll();
+    renderDegreeWheel();
+
+    // --- Module Routing Nav Architecture ---
+    function switchModule(target) {
+        activeModule = target;
+        gameState = "IDLE";
+        
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.module-container').forEach(m => m.classList.remove('active'));
+        
+        document.getElementById(`tab-${target}`).classList.add('active');
+        document.getElementById(`mod-${target}`).classList.add('active');
+        
+        if(!audioContext) return;
+        
+        if(target === 'ear') {
+            gamePrompt.innerText = "Ear training module active. Play the Cadence to prime your ears.";
+        } else if (target === 'note') {
+            gamePrompt.innerText = "Say 'NEXT' or hit the button to show a flashcard.";
+            flashcardDisplay.innerText = "?";
+        } else if (target === 'tuner') {
+            gamePrompt.innerText = "Tuner active. Pluck a string.";
+        }
+    }
+
+    keySelect.addEventListener('change', (e) => {
+        currentKeyIndex = parseInt(e.target.value);
+        renderDegreeWheel();
+        if(audioContext) gamePrompt.innerText = `Context key adjusted to ${noteStrings[currentKeyIndex]} Major.`;
+    });
+
+    // --- Audio Streams Boot Loop ---
+    startAudioBtn.addEventListener('click', async () => {
+        if (audioContext) return;
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            let microphone = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = bufferSize;
+            microphone.connect(analyser);
+            
+            audioStatus.innerText = "System Internal Microphones Tracking Live.";
+            audioStatus.style.color = "var(--accent)";
+            startAudioBtn.disabled = true;
+            playCadenceBtn.disabled = false;
+            nextEarBtn.disabled = false;
+            nextNoteBtn.disabled = false;
+            
+            switchModule(activeModule);
+            isListening = true;
+            requestAnimationFrame(updatePitchLoop);
+            initVoiceRecognition();
+        } catch (err) {
+            audioStatus.innerText = "Microphone Access Refused: " + err.message;
+            audioStatus.style.color = "var(--incorrect)";
+        }
+    });
+
+    // --- Voice Recognition Control Engine ---
+    function initVoiceRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            voiceStatus.innerText = "Voice Routing: Mobile Browser Unsupported Native Hooks.";
+            return;
+        }
+        recognition = new SpeechRecognition();
+        recognition.continuous = true; recognition.interimResults = false; recognition.lang = 'en-US';
+        recognition.onstart = () => {
+            voiceStatus.innerText = "Voice Engine: Active. Say 'NEXT' to advance hands-free.";
+            voiceStatus.className = "voice-indicator voice-active";
+        };
+        recognition.onend = () => { if (isListening) recognition.start(); };
+        recognition.onresult = (event) => {
+            const latestText = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+            if (latestText.includes("next") && gameState !== "CADENCE") {
+                if (activeModule === 'ear') triggerNextEarPrompt();
+                if (activeModule === 'note') triggerNextNotePrompt();
+            }
+        };
+        recognition.start();
+    }
+
+    // --- Synthesizer Engine (Guitar Pluck Model) ---
+    function playPluckTone(frequency, startTime, duration) {
+        const osc = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(frequency, startTime);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 0.995, startTime + duration);
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(frequency * 4, startTime);
+        filter.frequency.exponentialRampToValueAtTime(frequency * 1.5, startTime + duration);
+        
+        gainNode.gain.setValueAtTime(0.001, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.35, startTime + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc.connect(filter); filter.connect(gainNode); gainNode.connect(audioContext.destination);
+        osc.start(startTime); osc.stop(startTime + duration);
+    }
+
+    function midiNoteToFreq(note) { return 440 * Math.pow(2, (note - 69) / 12); }
+
+    // --- Module 1 Mechanics: Ear Trainer Cadence ---
+    playCadenceBtn.addEventListener('click', () => {
+        if (!audioContext || gameState === "CADENCE") return;
+        gameState = "CADENCE";
+        let now = audioContext.currentTime;
+        let base = 48 + currentKeyIndex; // Lower target string registers
+
+        // Triad Cadence sequences
+        playPluckTone(midiNoteToFreq(base), now, 0.7); playPluckTone(midiNoteToFreq(base+4), now, 0.7); playPluckTone(midiNoteToFreq(base+7), now, 0.7);
+        playPluckTone(midiNoteToFreq(base+5), now+0.8, 0.7); playPluckTone(midiNoteToFreq(base+9), now+0.8, 0.7); playPluckTone(midiNoteToFreq(base+12), now+0.8, 0.7);
+        playPluckTone(midiNoteToFreq(base+7), now+1.6, 0.7); playPluckTone(midiNoteToFreq(base+11), now+1.6, 0.7); playPluckTone(midiNoteToFreq(base+14), now+1.6, 0.7);
+        playPluckTone(midiNoteToFreq(base), now+2.4, 1.2); playPluckTone(midiNoteToFreq(base+4), now+2.4, 1.2); playPluckTone(midiNoteToFreq(base+7), now+2.4, 1.2);
+
+        setTimeout(() => { gameState = "IDLE"; gamePrompt.innerText = "Cadence complete. Say 'NEXT' for a note."; }, 3500);
+    });
+
+    function triggerNextEarPrompt() {
+        gameState = "CADENCE";
+        document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
+        
+        let targetIdx = Math.floor(Math.random() * majorScaleSteps.length);
+        currentTargetDegree = { index: targetIdx, offset: majorScaleSteps[targetIdx], id: `deg-${targetIdx + 1}` };
+        
+        gamePrompt.innerText = "Listen closely to the tone...";
+        let targetMidi = 48 + currentKeyIndex + currentTargetDegree.offset;
+        if (targetMidi > 57) targetMidi -= 12; // Force to open-5th fret low neck context
+        
+        playPluckTone(midiNoteToFreq(targetMidi), audioContext.currentTime + 0.3, 1.2);
+        
+        setTimeout(() => {
+            gamePrompt.innerText = "Play that scale degree back on your guitar (Frets 0-5)!";
+            document.getElementById(currentTargetDegree.id).classList.add('active-target');
+            gameState = "WAITING_FOR_ANSWER";
+        }, 1500);
+    }
+    nextEarBtn.addEventListener('click', triggerNextEarPrompt);
+
+    // --- Module 2 Mechanics: Fretboard Flashcards ---
+    function triggerNextNotePrompt() {
+        // Choose a completely random raw pitch name for your son to find
+        currentTargetNoteName = noteStrings[Math.floor(Math.random() * noteStrings.length)];
+        flashcardDisplay.innerText = currentTargetNoteName;
+        gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note anywhere on the neck!`;
+        gameState = "WAITING_FOR_ANSWER";
+    }
+    nextNoteBtn.addEventListener('click', triggerNextNotePrompt);
+
+    // Global Key Listener Fallback for Desktop spacebars
+    window.addEventListener('keydown', (e) => {
+        if ((e.code === "Space" || e.keyCode === 32) && gameState !== "CADENCE") {
+            e.preventDefault();
+            if (activeModule === 'ear') triggerNextEarPrompt();
+            if (activeModule === 'note') triggerNextNotePrompt();
+        }
+    });
+
+    // --- CORE PITCH STREAM DSP EVALUATION ROUTER ---
+    function updatePitchLoop() {
+        if (!isListening) return;
+        analyser.getFloatTimeDomainData(buffer);
+        let pitch = autoCorrelate(buffer, audioContext.sampleRate);
+        
+        if (pitch !== -1) {
+            let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
+            let currentNoteName = noteStrings[midiNum % 12];
+            
+            // Handle display logic depending on active view state
+            if (activeModule !== 'tuner') {
+                liveNoteDisplay.innerText = currentNoteName;
+                liveNoteDisplay.className = "pitch-display detected";
+            }
+
+            // ==================== ROUTE VALUE: EAR TRAINING GAME ====================
+            if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
+                let playedOffset = (midiNum % 12) - currentKeyIndex;
