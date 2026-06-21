@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite</title>
+    <title>The Rising Resonance Suite - Studio Core</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -60,7 +60,6 @@
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.2s;
-            touch-action: manipulation;
         }
 
         .tab-btn.active {
@@ -120,7 +119,6 @@
             cursor: pointer;
             transition: background 0.2s;
             margin: 5px;
-            touch-action: manipulation;
         }
         .btn:hover { filter: brightness(1.2); }
         .btn:disabled { background-color: #444; cursor: not-allowed; }
@@ -136,13 +134,14 @@
         .tuner-container { margin: 30px 0; position: relative; }
         .tuner-meter { width: 100%; height: 8px; background: #333; border-radius: 4px; position: relative; margin-top: 15px; }
         .tuner-needle { width: 4px; height: 24px; background: var(--accent); position: absolute; top: -8px; left: 50%; transform: translateX(-50%); transition: left 0.1s ease-out; }
+        .tuner-center-line { width: 2px; height: 16px; background: white; position: absolute; top: -4px; left: 50%; transform: translateX(-50%); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>The Rising Resonance Suite</h1>
-    <div class="subtitle">Custom Studio Master Suite (Automated Rounds & Fretboard Training)</div>
+    <div class="subtitle">Custom Audio Amplified Edition (Mobile & Desktop Optimized)</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -176,14 +175,15 @@
                 <option value="min">Natural Minor (i-iv-V-i)</option>
             </select>
         </div>
-        <button id="play-cadence-btn" class="btn" disabled>Start Round (5 Cycles)</button>
+        <button id="play-cadence-btn" class="btn" disabled>Play Custom Target Cadence</button>
+        <button id="next-ear-btn" class="btn" disabled>Next Tone Prompt (SPACEBAR)</button>
         <div class="degree-wheel" id="wheel-container"></div>
     </div>
 
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
-        <button id="next-note-btn" class="btn" disabled>Next Flashcard</button>
+        <button id="next-note-btn" class="btn" disabled>Next Flashcard (SPACEBAR)</button>
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
 
@@ -201,6 +201,7 @@
 
 <script>
     let audioContext = null, analyser = null, isListening = false;
+    let masterPlaybackGain = null; // Master booster node
     let activeModule = 'ear'; 
     let gameState = "IDLE"; 
     
@@ -224,9 +225,6 @@
     let currentTargetDegree = null;
     let currentTargetNoteName = null;
     let lastWrongNoteTime = 0;
-
-    let currentRound = 0;
-    const maxRounds = 5;
     
     let noteAudioPool = {};
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
@@ -234,6 +232,7 @@
     // --- DOM Cache Elements ---
     const startAudioBtn = document.getElementById('start-audio-btn');
     const playCadenceBtn = document.getElementById('play-cadence-btn');
+    const nextEarBtn = document.getElementById('next-ear-btn');
     const nextNoteBtn = document.getElementById('next-note-btn');
     const keySelect = document.getElementById('key-select');
     const modeSelect = document.getElementById('mode-select');
@@ -257,9 +256,9 @@
         
         if(!audioContext) return;
         if(target === 'ear') {
-            gamePrompt.innerText = "Ear training active. Click 'Start Round' to run the 5-cycle challenge.";
+            gamePrompt.innerText = "Ear training active. Play the Cadence track or hit SPACEBAR.";
         } else if (target === 'note') {
-            gamePrompt.innerText = "Tap the 'Next Flashcard' button or press SPACEBAR to start.";
+            gamePrompt.innerText = "Press SPACEBAR to deal a flashcard.";
             flashcardDisplay.innerText = "?";
         } else if (target === 'tuner') {
             gamePrompt.innerText = "Tuner tracking active.";
@@ -277,10 +276,8 @@
         renderDegreeWheel();
     });
 
-    function handleAudioInit(e) {
-        if (e) e.preventDefault();
+    startAudioBtn.addEventListener('click', async () => {
         if (audioContext) return;
-        
         audioStatus.innerText = "Linking input paths and audio registers...";
         audioStatus.style.color = "var(--accent)";
         startAudioBtn.disabled = true;
@@ -288,107 +285,112 @@
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
+            // Set up a master volume booster node
+            masterPlaybackGain = audioContext.createGain();
+            masterPlaybackGain.gain.setValueAtTime(2.5, audioContext.currentTime); // 2.5x amplification boost
+            masterPlaybackGain.connect(audioContext.destination);
+
+            // Preload single target notes and route them through Web Audio
             fileNames.forEach((name, index) => {
                 let audio = new Audio(`audio/${name}.mp3`);
                 audio.preload = "auto";
+                audio.crossOrigin = "anonymous";
+                
+                // Tie the audio element directly to the Web Audio node tree
+                let source = audioContext.createMediaElementSource(audio);
+                source.connect(masterPlaybackGain);
+                
                 noteAudioPool[index] = audio;
             });
 
-            audioStatus.innerText = "Audio Context Enabled. 24-Track Cadence Matrix Armed.";
+            audioStatus.innerText = "Audio Connected. Amplification Active.";
             audioStatus.style.color = "var(--correct)";
             playCadenceBtn.disabled = false;
+            nextEarBtn.disabled = false;
             nextNoteBtn.disabled = false;
             switchModule(activeModule);
             
-            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(stream => {
-                let microphone = audioContext.createMediaStreamSource(stream);
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = bufferSize;
-                microphone.connect(analyser);
-
-                isListening = true;
-                requestAnimationFrame(updatePitchLoop);
-            })
-            .catch(err => {
-                audioStatus.innerText = "Mic Permission Denied: " + err.message;
-                audioStatus.style.color = "var(--incorrect)";
+            // Request microphone stream with mobile filter configurations enabled
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,  // Suppresses mobile speaker bleed-over
+                    noiseSuppression: true,  // Eliminates open-air static hiss
+                    autoGainControl: false   // Prevents Android from muffling quiet guitar strings
+                }, 
+                video: false 
             });
+            
+            let microphone = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = bufferSize;
+            microphone.connect(analyser);
+
+            isListening = true;
+            requestAnimationFrame(updatePitchLoop);
 
         } catch (err) {
             audioStatus.innerText = "Initialization Fault: " + err.message;
             audioStatus.style.color = "var(--incorrect)";
             startAudioBtn.disabled = false;
         }
-    }
-
-    startAudioBtn.addEventListener('click', handleAudioInit);
-    startAudioBtn.addEventListener('touchstart', handleAudioInit, {passive: false});
+    });
 
     function playSingleNoteFile(index) {
         const file = noteAudioPool[index % 12];
-        if (file) { file.currentTime = 0; file.volume = 1.0; file.play(); }
+        if (file) { file.currentTime = 0; file.play(); }
     }
 
-    function handleCadenceTrigger(e) {
-        if (e) e.preventDefault();
+    // Dynamic track switching based on Mode + Key index routed through booster node
+    playCadenceBtn.addEventListener('click', () => {
         if (!audioContext || gameState === "CADENCE") return;
-        currentRound = 1; 
-        runAutomatedSequenceLoop();
-    }
-    playCadenceBtn.addEventListener('click', handleCadenceTrigger);
-    playCadenceBtn.addEventListener('touchstart', handleCadenceTrigger, {passive: false});
-
-    function runAutomatedSequenceLoop() {
         gameState = "CADENCE";
-        document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
-        gamePrompt.innerText = `[Cycle ${currentRound} of 5] Streaming key cadence track...`;
+        gamePrompt.innerText = "Streaming your studio recorded tracking lane...";
         
         let cadenceTrackFile = new Audio(`audio/${currentScaleMode}${currentKeyIndex}.mp3`);
-        cadenceTrackFile.volume = 1.0;
+        cadenceTrackFile.crossOrigin = "anonymous";
+        
+        // Dynamic route cadence track through master booster
+        let source = audioContext.createMediaElementSource(cadenceTrackFile);
+        source.connect(masterPlaybackGain);
+        
         cadenceTrackFile.play();
 
         cadenceTrackFile.onended = () => {
-            playHiddenPromptNote();
+            gameState = "IDLE";
+            gamePrompt.innerText = "Cadence complete. Press SPACEBAR for a quiz note.";
+            source.disconnect(); // Clear element context allocation maps cleanly
         };
-    }
+    });
 
-    function playHiddenPromptNote() {
+    function triggerNextEarPrompt() {
+        gameState = "CADENCE";
+        document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
+        
         let targetIdx = Math.floor(Math.random() * currentScaleProfile.length);
         currentTargetDegree = currentScaleProfile[targetIdx];
         
-        gamePrompt.innerText = `[Cycle ${currentRound} of 5] Listen to the prompt note...`;
+        gamePrompt.innerText = "Listen closely to the scale degree note...";
         playSingleNoteFile(currentKeyIndex + currentTargetDegree.offset);
         
         setTimeout(() => {
-            gamePrompt.innerText = `[Cycle ${currentRound} of 5] Play the matching scale degree on your guitar!`;
+            gamePrompt.innerText = "Play that scale degree back on your guitar!";
             document.getElementById(`deg-${targetIdx}`).classList.add('active-target');
             gameState = "WAITING_FOR_ANSWER";
         }, 1500);
     }
 
-    function executeFlashcardDeal(e) {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (!audioContext || gameState === "CADENCE") return;
-        
+    function triggerNextNotePrompt() {
         currentTargetNoteName = noteStrings[Math.floor(Math.random() * noteStrings.length)];
         flashcardDisplay.innerText = currentTargetNoteName;
         gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`;
         gameState = "WAITING_FOR_ANSWER";
-        
-        nextNoteBtn.blur();
     }
-
-    nextNoteBtn.addEventListener('click', executeFlashcardDeal);
-    nextNoteBtn.addEventListener('touchstart', executeFlashcardDeal, {passive: false});
 
     window.addEventListener('keydown', (e) => {
         if ((e.code === "Space" || e.keyCode === 32) && gameState !== "CADENCE") {
             e.preventDefault();
-            if (activeModule === 'note') executeFlashcardDeal();
+            if (activeModule === 'ear') triggerNextEarPrompt();
+            if (activeModule === 'note') triggerNextNotePrompt();
         }
     });
 
@@ -406,53 +408,35 @@
                 liveNoteDisplay.className = "pitch-display detected";
             }
 
-            // Ear Training Module Loop
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
                 let playedOffset = (midiNum % 12) - currentKeyIndex;
                 if (playedOffset < 0) playedOffset += 12;
                 
                 if (playedOffset === currentTargetDegree.offset) {
-                    gameState = "CADENCE"; 
+                    gameState = "IDLE";
                     liveNoteDisplay.className = "pitch-display match";
+                    gamePrompt.innerText = "CORRECT! Press SPACEBAR for another tone.";
                     document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
-                    
-                    if (currentRound < maxRounds) {
-                        gamePrompt.innerText = "CORRECT! Advancing to the next cadence cycle...";
-                        currentRound++;
-                        setTimeout(() => { runAutomatedSequenceLoop(); }, 1500);
-                    } else {
-                        gamePrompt.innerText = "ROUND SUCCESSFUL! You completed all 5 cadence cycles.";
-                        gameState = "IDLE";
-                    }
                 } else if (Date.now() - lastWrongNoteTime > 2000) {
                     let isDiatonic = currentScaleProfile.some(d => d.offset === playedOffset);
                     if (isDiatonic) {
                         lastWrongNoteTime = Date.now();
-                        gamePrompt.innerText = `Wrong degree! Keep testing positions... [Cycle ${currentRound} of 5]`;
+                        gamePrompt.innerText = "Wrong scale degree! Keep searching positions...";
                     }
                 }
             }
-
-            // Fretboard Note Flashcards Module Loop
             else if (activeModule === 'note') {
                 if (gameState === "WAITING_FOR_ANSWER" && currentNoteName === currentTargetNoteName) {
                     gameState = "WAITING_FOR_NEXT_TRIGGER";
                     liveNoteDisplay.className = "pitch-display match";
                     gamePrompt.innerText = "MATCH! Now pluck your Low Open E string to advance the deck.";
                 } 
-                else if (gameState === "WAITING_FOR_NEXT_TRIGGER" && (midiNum >= 39 && midiNum <= 41)) {
+                else if (gameState === "WAITING_FOR_NEXT_TRIGGER" && midiNum === 40) {
                     gameState = "CADENCE"; 
-                    liveNoteDisplay.innerText = "E (Advancing...)";
-                    setTimeout(() => { 
-                        currentTargetNoteName = noteStrings[Math.floor(Math.random() * noteStrings.length)];
-                        flashcardDisplay.innerText = currentTargetNoteName;
-                        gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`;
-                        gameState = "WAITING_FOR_ANSWER";
-                    }, 600);
+                    liveNoteDisplay.innerText = "E (Advancing Deck...)";
+                    setTimeout(() => { triggerNextNotePrompt(); }, 600);
                 }
             }
-
-            // Chromatic Tuner Module Loop
             else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
                 let targetMidiRounded = Math.round(exactMidi);
