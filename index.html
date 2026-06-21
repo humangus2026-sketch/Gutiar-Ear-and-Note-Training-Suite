@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite - Universal Mobile Fix</title>
+    <title>The Rising Resonance Suite</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -142,7 +142,7 @@
 
 <div class="container">
     <h1>The Rising Resonance Suite</h1>
-    <div class="subtitle">Custom Audio Automated Session Edition (Universal Touchscreen Fix)</div>
+    <div class="subtitle">Custom Studio Master Suite (Automated Rounds & Fretboard Training)</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -277,7 +277,6 @@
         renderDegreeWheel();
     });
 
-    // Universal action wrapper to run audio init
     function handleAudioInit(e) {
         if (e) e.preventDefault();
         if (audioContext) return;
@@ -323,7 +322,6 @@
         }
     }
 
-    // Attach both mobile and desktop activation events safely
     startAudioBtn.addEventListener('click', handleAudioInit);
     startAudioBtn.addEventListener('touchstart', handleAudioInit, {passive: false});
 
@@ -369,7 +367,6 @@
         }, 1500);
     }
 
-    // Universal flashcard deal function for mobile screen buttons and desktop spacebars
     function executeFlashcardDeal(e) {
         if (e) {
             e.preventDefault();
@@ -382,7 +379,6 @@
         gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`;
         gameState = "WAITING_FOR_ANSWER";
         
-        // Explicitly remove browser element focus to prevent ghost spacebar interactions
         nextNoteBtn.blur();
     }
 
@@ -410,7 +406,7 @@
                 liveNoteDisplay.className = "pitch-display detected";
             }
 
-            // Ear Training Evaluation
+            // Ear Training Module Loop
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
                 let playedOffset = (midiNum % 12) - currentKeyIndex;
                 if (playedOffset < 0) playedOffset += 12;
@@ -437,21 +433,26 @@
                 }
             }
 
-            // Flashcard Evaluation
+            // Fretboard Note Flashcards Module Loop
             else if (activeModule === 'note') {
                 if (gameState === "WAITING_FOR_ANSWER" && currentNoteName === currentTargetNoteName) {
                     gameState = "WAITING_FOR_NEXT_TRIGGER";
                     liveNoteDisplay.className = "pitch-display match";
                     gamePrompt.innerText = "MATCH! Now pluck your Low Open E string to advance the deck.";
                 } 
-                else if (gameState === "WAITING_FOR_NEXT_TRIGGER" && midiNum === 40) {
+                else if (gameState === "WAITING_FOR_NEXT_TRIGGER" && (midiNum >= 39 && midiNum <= 41)) {
                     gameState = "CADENCE"; 
-                    liveNoteDisplay.innerText = "E (Advancing Deck...)";
-                    setTimeout(() => { executeFlashcardDeal(); }, 600);
+                    liveNoteDisplay.innerText = "E (Advancing...)";
+                    setTimeout(() => { 
+                        currentTargetNoteName = noteStrings[Math.floor(Math.random() * noteStrings.length)];
+                        flashcardDisplay.innerText = currentTargetNoteName;
+                        gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`;
+                        gameState = "WAITING_FOR_ANSWER";
+                    }, 600);
                 }
             }
 
-            // Chromatic Tuner Evaluation
+            // Chromatic Tuner Module Loop
             else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
                 let targetMidiRounded = Math.round(exactMidi);
