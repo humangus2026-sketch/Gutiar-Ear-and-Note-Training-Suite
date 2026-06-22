@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite - Advanced Resolved Edition</title>
+    <title>The Rising Resonance Suite - Smart Resolution Edition</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -147,7 +147,7 @@
 
 <div class="container">
     <h1>The Rising Resonance Suite</h1>
-    <div class="subtitle">5-Round Automated Resolution Edition (Enharmonic Equivalents Integrated)</div>
+    <div class="subtitle">Directional Resolution Master Edition</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -214,7 +214,6 @@
     let currentRound = 0;
     const maxRounds = 5;
 
-    // Streamlined maps featuring comprehensive enharmonic equivalent pairs
     const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
     const fileNames = ["c", "csharp", "d", "dsharp", "e", "f", "fsharp", "g", "gsharp", "a", "asharp", "b"];
     
@@ -233,13 +232,13 @@
     let currentKeyIndex = 0; 
     let currentScaleMode = "maj"; 
     let currentTargetDegree = null;
+    let currentTargetDegreeIndex = -1; // Added to pin structural element references accurately
     let currentTargetNoteName = null;
     let lastWrongNoteTime = 0;
     
     let decodedAudioBuffers = {};
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
 
-    // --- DOM Cache Elements ---
     const startAudioBtn = document.getElementById('start-audio-btn');
     const startSessionBtn = document.getElementById('start-session-btn');
     const nextNoteBtn = document.getElementById('next-note-btn');
@@ -268,7 +267,7 @@
         
         if(!audioContext) return;
         if(target === 'ear') {
-            gamePrompt.innerText = "Ear training module active. Press SPACEBAR to start a 5-round session.";
+            gamePrompt.innerText = "Ear training active. Press SPACEBAR to start a 5-round session.";
         } else if (target === 'note') {
             gamePrompt.innerText = "Press SPACEBAR to deal an enharmonic flashcard.";
             flashcardDisplay.innerText = "?";
@@ -315,7 +314,7 @@
                 }
             }
 
-            audioStatus.innerText = "Audio Connected. Resolution Anchors Armed.";
+            audioStatus.innerText = "Audio Connected. Dynamic Resolvers Online.";
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false;
             nextNoteBtn.disabled = false;
@@ -351,7 +350,7 @@
         }
     }
 
-    // --- AUTOMATED SEQUENCE LOGIC MATRICES ---
+    // --- AUTOMATION ENGINE CONTEXTS ---
     function startAutomatedSession() {
         currentRound = 1;
         roundDisplay.style.display = "block";
@@ -362,7 +361,7 @@
         if (currentRound > maxRounds) {
             gameState = "IDLE";
             roundDisplay.innerText = "Session Complete!";
-            gamePrompt.innerText = "Excellent practice block. Press SPACEBAR to spin up another 5 rounds.";
+            gamePrompt.innerText = "Fantastic practice block. Press SPACEBAR to spin up another 5 rounds.";
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
@@ -380,58 +379,60 @@
 
         cadenceAudioElement.onended = () => {
             trackSourceNode.disconnect();
-            gamePrompt.innerText = "Audiate structural center... (2s Delay)";
+            gamePrompt.innerText = "Audiate structural center... (1s Delay)";
             
+            // Reduced gap to 1 second flat
             setTimeout(() => {
                 if (activeModule !== 'ear' || currentRound === 0) return; 
                 
-                let targetIdx = Math.floor(Math.random() * currentScaleProfile.length);
-                currentTargetDegree = currentScaleProfile[targetIdx];
+                currentTargetDegreeIndex = Math.floor(Math.random() * currentScaleProfile.length);
+                currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 
                 gamePrompt.innerText = "Listen closely to the target note...";
                 playDecodedBufferIndex(currentKeyIndex + currentTargetDegree.offset);
                 
                 setTimeout(() => {
                     gamePrompt.innerText = "Find that scale degree note on your fretboard!";
-                    document.getElementById(`deg-${targetIdx}`).classList.add('active-target');
+                    document.getElementById(`deg-${currentTargetDegreeIndex}`).classList.add('active-target');
                     gameState = "WAITING_FOR_ANSWER";
                 }, 1200);
 
-            }, 2000); 
+            }, 1000); 
         };
     }
 
-    // Automated descending playback runner method
-    function playDescendingScaleWalk(startOffset) {
-        let currentOffset = startOffset;
+    // New Directional Resolution Sequence Builder (Handles Walk-down OR Walk-up)
+    function playDirectionalResolution(targetDegreeIndex) {
         let walkDelay = 0;
-
-        // Loop down through scale intervals step-by-step until reaching root (offset 0)
-        while (currentOffset >= 0) {
-            let captureOffset = currentOffset; // Local enclosure lock
-            setTimeout(() => {
-                playDecodedBufferIndex(currentKeyIndex + captureOffset);
-            }, walkDelay);
-
-            walkDelay += 350; // Neat 350ms rhythmic spacing per descending note
-
-            // Find the next scale step down below the current position
-            let nextLowerStep = currentScaleProfile
-                .map(d => d.offset)
-                .filter(offset => offset < currentOffset)
-                .sort((a, b) => b - a)[0];
-
-            if (nextLowerStep !== undefined) {
-                currentOffset = nextLowerStep;
-            } else {
-                // If no more explicit steps exist above zero, terminate the loop check
-                break;
+        
+        // Scale degrees 1, 2, 3, 4 (Indices 0 through 3) walk DOWN to root index 0
+        if (targetDegreeIndex <= 3) {
+            for (let i = targetDegreeIndex; i >= 0; i--) {
+                let currentStepOffset = currentScaleProfile[i].offset;
+                setTimeout(() => {
+                    playDecodedBufferIndex(currentKeyIndex + currentStepOffset);
+                }, walkDelay);
+                walkDelay += 350;
             }
+        } 
+        // Scale degrees 5, 6, 7 (Indices 4 through 6) resolve UP to octave root (+12)
+        else {
+            // Step up through remaining degrees
+            for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
+                let currentStepOffset = currentScaleProfile[i].offset;
+                setTimeout(() => {
+                    playDecodedBufferIndex(currentKeyIndex + currentStepOffset);
+                }, walkDelay);
+                walkDelay += 350;
+            }
+            // Fire the ultimate resolved 8th/Octave root note file anchor frame
+            setTimeout(() => {
+                playDecodedBufferIndex(currentKeyIndex + 12); // Plays octaved Tonic root
+            }, walkDelay);
         }
     }
 
     function triggerNextNotePrompt() {
-        // Pull full dual enharmonic string pairs
         let randomIdx = Math.floor(Math.random() * noteStrings.length);
         currentTargetNoteName = noteStrings[randomIdx];
         flashcardDisplay.innerText = currentTargetNoteName;
@@ -457,8 +458,6 @@
         
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
-            
-            // Check matching bounds across raw enharmonic values array segments cleanly
             let currentRawName = noteStrings[midiNum % 12];
             
             if (activeModule !== 'tuner') {
@@ -466,7 +465,7 @@
                 liveNoteDisplay.className = "pitch-display detected";
             }
 
-            // Ear Trainer Processing Engine
+            // Ear Trainer Processing Node
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
                 let playedOffset = (midiNum % 12) - currentKeyIndex;
                 if (playedOffset < 0) playedOffset += 12;
@@ -474,12 +473,11 @@
                 if (playedOffset === currentTargetDegree.offset) {
                     gameState = "ROUND_COMPLETE"; 
                     liveNoteDisplay.className = "pitch-display match";
-                    gamePrompt.innerText = "CORRECT MATCH! Audiate the walk-down line resolution...";
+                    gamePrompt.innerText = "CORRECT MATCH! Audiate line resolution...";
                     
-                    // Fire automated descending scale line walk-down anchor sequence
-                    playDescendingScaleWalk(currentTargetDegree.offset);
+                    // Fire directional step builder engine
+                    playDirectionalResolution(currentTargetDegreeIndex);
                     
-                    // Pause longer to accommodate the full walk-down line execution perfectly before looping next round
                     setTimeout(() => {
                         currentRound++;
                         executeRoundSequence();
@@ -488,11 +486,11 @@
                     let isDiatonic = currentScaleProfile.some(d => d.offset === playedOffset);
                     if (isDiatonic) {
                         lastWrongNoteTime = Date.now();
-                        gamePrompt.innerText = "Wrong scale degree! Keep testing positions...";
+                        gamePrompt.innerText = "Wrong scale degree! Keep searching positions...";
                     }
                 }
             }
-            // Flashcard Processing Engine
+            // Flashcard Processing Node
             else if (activeModule === 'note') {
                 if (gameState === "WAITING_FOR_ANSWER" && currentRawName === currentTargetNoteName) {
                     gameState = "WAITING_FOR_NEXT_TRIGGER";
@@ -505,7 +503,7 @@
                     setTimeout(() => { triggerNextNotePrompt(); }, 600);
                 }
             }
-            // Tuner Processing Engine
+            // Tuner Processing Node
             else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
                 let targetMidiRounded = Math.round(exactMidi);
