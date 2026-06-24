@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite - Authentic Cadence Edition</title>
+    <title>The Rising Resonance Suite - Calibrated Core</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -166,20 +166,27 @@
 
     <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
-    <!-- MODULE 1: FUNCTIONAL EAR TRAINING -->
     <div id="mod-ear" class="module-container active">
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
             <select id="key-select">
-                <option value="0">E</option><option value="1">F</option><option value="2">F# / Gb</option>
-                <option value="3">G</option><option value="4">G# / Ab</option><option value="5">A</option>
-                <option value="6">A# / Bb</option><option value="7">B</option><option value="8">C</option>
-                <option value="9">C# / Db</option><option value="10">D</option><option value="11">D# / Eb</option>
+                <option value="8" selected>C</option>
+                <option value="9">C# / Db</option>
+                <option value="10">D</option>
+                <option value="11">D# / Eb</option>
+                <option value="0">E</option>
+                <option value="1">F</option>
+                <option value="2">F# / Gb</option>
+                <option value="3">G</option>
+                <option value="4">G# / Ab</option>
+                <option value="5">A</option>
+                <option value="6">A# / Bb</option>
+                <option value="7">B</option>
             </select>
 
             <label for="mode-select">Framework: </label>
             <select id="mode-select">
-                <option value="maj">Major Scale (I-IV-V-I)</option>
+                <option value="maj" selected>Major Scale (I-IV-V-I)</option>
                 <option value="min">Natural Minor (i-iv-V-i)</option>
             </select>
         </div>
@@ -187,7 +194,6 @@
         <div class="degree-wheel" id="wheel-container"></div>
     </div>
 
-    <!-- MODULE 2: FRETBOARD NOTE FLASHCARDS -->
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
@@ -195,7 +201,6 @@
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
 
-    <!-- MODULE 3: CHROMATIC TUNER -->
     <div id="mod-tuner" class="module-container">
         <p>Pluck any string cleanly to view microtonal cents tracking metrics.</p>
         <div class="tuner-container">
@@ -230,7 +235,7 @@
     };
 
     let currentScaleProfile = scaleDefinitions.maj;
-    let currentKeyIndex = 0; 
+    let currentKeyIndex = 8; // Default directly to C (Index 8) on layout initialization
     let currentScaleMode = "maj"; 
     let currentTargetDegree = null;
     let currentTargetDegreeIndex = -1; 
@@ -303,11 +308,7 @@
             switchModule(activeModule);
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: false, 
-                    noiseSuppression: false, 
-                    autoGainControl: false 
-                }, 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
                 video: false 
             });
             
@@ -326,7 +327,6 @@
         }
     });
 
-    // Clean uncompressed audio track runner
     function playRawFileTrack(url, delay = 0) {
         setTimeout(() => {
             let snd = new Audio(url);
@@ -355,7 +355,6 @@
         gamePrompt.innerText = "Streaming cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
 
-        // FIX: Re-linked directly to your recorded full cadence loops (e.g., maj3.mp3)
         let cadenceTrackFile = new Audio(`audio/${currentScaleMode}${currentKeyIndex}.mp3`);
         cadenceTrackFile.volume = 1.0;
         cadenceTrackFile.play();
@@ -370,7 +369,6 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 
                 gamePrompt.innerText = "Listen closely to the target note...";
-                // Play target prompt note from individual files
                 playRawFileTrack(`audio/${currentKeyIndex + currentTargetDegree.offset}.mp3`);
                 
                 setTimeout(() => {
@@ -383,7 +381,6 @@
         };
     }
 
-    // Directional walk-up/down logic (Degrees 1-4 down to root, 5-7 up to octave)
     function playDirectionalResolution(targetDegreeIndex) {
         let walkDelay = 0;
         
@@ -511,6 +508,7 @@
         });
     }
 
+    // High Fidelity Auto-Correlation DSP Engine
     function autoCorrelate(buffer, sampleRate) {
         let rms = 0;
         for (let i = 0; i < buffer.length; i++) { rms += buffer[i] * buffer[i]; }
