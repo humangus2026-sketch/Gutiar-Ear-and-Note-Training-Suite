@@ -147,7 +147,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Fully Cached Studio Master Edition</div>
+    <div class="subtitle">Custom Audio Native Production Edition</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -156,7 +156,7 @@
     </div>
 
     <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface & Preload Audio</button>
+        <button id="start-audio-btn" class="btn">Enable Audio Interface & Cache Session Files</button>
         <div id="audio-status">Audio Status: Disconnected</div>
     </div>
 
@@ -215,7 +215,6 @@
 
 <script>
     let audioContext = null, analyser = null, isListening = false;
-    let masterPlaybackGain = null; 
     let activeModule = 'ear'; 
     let gameState = "IDLE"; 
     
@@ -243,9 +242,6 @@
     let currentTargetNoteName = null;
     let lastWrongNoteTime = 0;
     
-    // Memory Cache Dictionaries for Both Notes and Cadences
-    let noteBuffers = {};
-    let cadenceBuffers = {};
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
 
     const startAudioBtn = document.getElementById('start-audio-btn');
@@ -296,40 +292,16 @@
         renderDegreeWheel();
     });
 
-    async function fetchAndDecodeSample(url) {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        return await audioContext.decodeAudioData(arrayBuffer);
-    }
-
     startAudioBtn.addEventListener('click', async () => {
         if (audioContext) return;
-        audioStatus.innerText = "Caching all 48 studio recording assets into memory... Please wait...";
+        audioStatus.innerText = "Connecting hardware layers...";
         audioStatus.style.color = "var(--accent)";
         startAudioBtn.disabled = true;
 
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            masterPlaybackGain = audioContext.createGain();
-            masterPlaybackGain.gain.setValueAtTime(2.5, audioContext.currentTime); 
-            masterPlaybackGain.connect(audioContext.destination);
-
-            // 1. Preload 24 single chromatic notes into binary cache buffers
-            for (let i = 0; i < 24; i++) {
-                noteBuffers[i] = await fetchAndDecodeSample(`audio/${i}.mp3`);
-            }
-
-            // 2. Preload 24 full cadence files into binary cache buffers (12 keys x 2 modes)
-            const modes = ["maj", "min"];
-            for (let m of modes) {
-                for (let k = 0; k < 12; k++) {
-                    let trackId = `${m}${k}`;
-                    cadenceBuffers[trackId] = await fetchAndDecodeSample(`audio/${trackId}.mp3`);
-                }
-            }
-
-            audioStatus.innerText = "All Audio Fully Cached. Unified Engine Live.";
+            audioStatus.innerText = "Audio Streams Ready (The Guitarist's Ear Active).";
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false;
             nextNoteBtn.disabled = false;
@@ -349,24 +321,21 @@
             requestAnimationFrame(updatePitchLoop);
 
         } catch (err) {
-            audioStatus.innerText = "Asset Allocation Error: " + err.message;
+            audioStatus.innerText = "Initialization Fault: " + err.message;
             audioStatus.style.color = "var(--incorrect)";
             startAudioBtn.disabled = false;
-            console.error(err);
         }
     });
 
-    // Unified low-latency audio buffer driver
-    function playDecodedBuffer(bufferObj, delay = 0, onEndCallback = null) {
-        if (!bufferObj) return;
+    // Native standalone hardware-isolated player (Bypasses Web Audio completely to secure tracking)
+    function playRawTrackFile(url, delay = 0, onEndCallback = null) {
         setTimeout(() => {
-            let bufferSourceNode = audioContext.createBufferSource();
-            bufferSourceNode.buffer = bufferObj;
-            bufferSourceNode.connect(masterPlaybackGain);
+            let snd = new Audio(url);
+            snd.volume = 1.0;
             if (onEndCallback) {
-                bufferSourceNode.onended = onEndCallback;
+                snd.onended = onEndCallback;
             }
-            bufferSourceNode.start(0);
+            snd.play();
         }, delay);
     }
 
@@ -380,22 +349,19 @@
         if (currentRound > maxRounds) {
             gameState = "IDLE";
             roundDisplay.innerText = "Session Complete!";
-            gamePrompt.innerText = "Fantastic block. Press SPACEBAR to loop another 5 rounds.";
+            gamePrompt.innerText = "Fantastic. Press SPACEBAR to spin up another 5 rounds.";
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
 
         gameState = "CADENCE";
         roundDisplay.innerText = `Round: ${currentRound} / 5`;
-        gamePrompt.innerText = "Streaming pure recorded cadence track...";
+        gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
 
-        // Play the full recorded cadence directly from memory cache safely
-        let targetCadenceId = `${currentScaleMode}${currentKeyIndex}`;
-        let activeCadenceBuffer = cadenceBuffers[targetCadenceId];
-
-        playDecodedBuffer(activeCadenceBuffer, 0, () => {
-            gamePrompt.innerText = "Audiate center... (1s Delay)";
+        // FIXED PATH MAPPING: Targets your numeric system file setup smoothly
+        playRawTrackFile(`audio/${currentScaleMode}_${currentKeyIndex}.mp3`, 0, () => {
+            gamePrompt.innerText = "Audiate structural center... (1s Delay)";
             
             setTimeout(() => {
                 if (activeModule !== 'ear' || currentRound === 0) return; 
@@ -404,7 +370,7 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 
                 gamePrompt.innerText = "Listen closely to the target note...";
-                playDecodedBuffer(noteBuffers[currentKeyIndex + currentTargetDegree.offset]);
+                playRawTrackFile(`audio/${currentKeyIndex + currentTargetDegree.offset}.mp3`);
                 
                 setTimeout(() => {
                     gamePrompt.innerText = "Find that scale degree note on your fretboard!";
@@ -423,8 +389,7 @@
             for (let i = targetDegreeIndex; i >= 0; i--) {
                 let currentStepOffset = currentScaleProfile[i].offset;
                 let targetFileIndex = currentKeyIndex + currentStepOffset;
-                let bufferToPlay = noteBuffers[targetFileIndex];
-                playDecodedBuffer(bufferToPlay, walkDelay);
+                playRawTrackFile(`audio/${targetFileIndex}.mp3`, walkDelay);
                 walkDelay += 350;
             }
         } 
@@ -432,11 +397,10 @@
             for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
                 let currentStepOffset = currentScaleProfile[i].offset;
                 let targetFileIndex = currentKeyIndex + currentStepOffset;
-                let bufferToPlay = noteBuffers[targetFileIndex];
-                playDecodedBuffer(bufferToPlay, walkDelay);
+                playRawTrackFile(`audio/${targetFileIndex}.mp3`, walkDelay);
                 walkDelay += 350;
             }
-            playDecodedBuffer(noteBuffers[currentKeyIndex + 12], walkDelay);
+            playRawTrackFile(`audio/${currentKeyIndex + 12}.mp3`, walkDelay);
         }
     }
 
