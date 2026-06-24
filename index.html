@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite - Smart Resolution Edition</title>
+    <title>The Rising Resonance Suite - Two-Octave Master Edition</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -147,7 +147,7 @@
 
 <div class="container">
     <h1>The Rising Resonance Suite</h1>
-    <div class="subtitle">Directional Resolution Master Edition</div>
+    <div class="subtitle">Linear 24-Note Chromatic Resolution Master</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -168,12 +168,12 @@
 
     <div id="mod-ear" class="module-container active">
         <div class="control-row">
-            <label for="key-select">Key: </label>
+            <label for="key-select">Key Anchor Point: </label>
             <select id="key-select">
-                <option value="0">C</option><option value="1">C# / Db</option><option value="2">D</option>
-                <option value="3">D# / Eb</option><option value="4">E</option><option value="5">F</option>
-                <option value="6">F# / Gb</option><option value="7">G</option><option value="8">G# / Ab</option>
-                <option value="9">A</option><option value="10">A# / Bb</option><option value="11">B</option>
+                <option value="0">E</option><option value="1">F</option><option value="2">F# / Gb</option>
+                <option value="3">G</option><option value="4">G# / Ab</option><option value="5">A</option>
+                <option value="6">A# / Bb</option><option value="7">B</option><option value="8">C</option>
+                <option value="9">C# / Db</option><option value="10">D</option><option value="11">D# / Eb</option>
             </select>
 
             <label for="mode-select">Framework: </label>
@@ -214,8 +214,8 @@
     let currentRound = 0;
     const maxRounds = 5;
 
-    const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
-    const fileNames = ["c", "csharp", "d", "dsharp", "e", "f", "fsharp", "g", "gsharp", "a", "asharp", "b"];
+    // Shifted array layout starting natively at low E (index 0) matching your physical string setup
+    const noteStrings = ["E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B", "C", "C# / Db", "D", "D# / Eb"];
     
     const scaleDefinitions = {
         maj: [
@@ -232,7 +232,7 @@
     let currentKeyIndex = 0; 
     let currentScaleMode = "maj"; 
     let currentTargetDegree = null;
-    let currentTargetDegreeIndex = -1; // Added to pin structural element references accurately
+    let currentTargetDegreeIndex = -1; 
     let currentTargetNoteName = null;
     let lastWrongNoteTime = 0;
     
@@ -295,7 +295,7 @@
 
     startAudioBtn.addEventListener('click', async () => {
         if (audioContext) return;
-        audioStatus.innerText = "Loading custom audio file assets... Please wait...";
+        audioStatus.innerText = "Loading 24 Chromatic Audio Files... Please wait...";
         audioStatus.style.color = "var(--accent)";
         startAudioBtn.disabled = true;
 
@@ -306,15 +306,16 @@
             masterPlaybackGain.gain.setValueAtTime(2.5, audioContext.currentTime); 
             masterPlaybackGain.connect(audioContext.destination);
 
-            for (let i = 0; i < fileNames.length; i++) {
+            // Fetch and cache all 24 linear files (0.mp3 through 23.mp3)
+            for (let i = 0; i < 24; i++) {
                 try {
-                    decodedAudioBuffers[i] = await fetchAndDecodeSample(`audio/${fileNames[i]}.mp3`);
+                    decodedAudioBuffers[i] = await fetchAndDecodeSample(`audio/${i}.mp3`);
                 } catch(fileErr) {
-                    console.warn(`File audio/${fileNames[i]}.mp3 missing.`, fileErr);
+                    console.warn(`File audio/${i}.mp3 missing.`, fileErr);
                 }
             }
 
-            audioStatus.innerText = "Audio Connected. Dynamic Resolvers Online.";
+            audioStatus.innerText = "24-Note Linear Matrix Cached.";
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false;
             nextNoteBtn.disabled = false;
@@ -341,7 +342,7 @@
     });
 
     function playDecodedBufferIndex(index) {
-        const cachedBuffer = decodedAudioBuffers[index % 12];
+        const cachedBuffer = decodedAudioBuffers[index];
         if (cachedBuffer) {
             let bufferSourceNode = audioContext.createBufferSource();
             bufferSourceNode.buffer = cachedBuffer;
@@ -350,7 +351,6 @@
         }
     }
 
-    // --- AUTOMATION ENGINE CONTEXTS ---
     function startAutomatedSession() {
         currentRound = 1;
         roundDisplay.style.display = "block";
@@ -361,7 +361,7 @@
         if (currentRound > maxRounds) {
             gameState = "IDLE";
             roundDisplay.innerText = "Session Complete!";
-            gamePrompt.innerText = "Fantastic practice block. Press SPACEBAR to spin up another 5 rounds.";
+            gamePrompt.innerText = "Fantastic. Press SPACEBAR to spin up another 5 rounds.";
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
@@ -371,17 +371,16 @@
         gamePrompt.innerText = "Streaming cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
 
-        let cadenceAudioElement = new Audio(`audio/${currentScaleMode}${currentKeyIndex}.mp3`);
-        cadenceAudioElement.crossOrigin = "anonymous";
-        let trackSourceNode = audioContext.createMediaElementSource(cadenceAudioElement);
+        let cadenceTrackFile = new Audio(`audio/${currentScaleMode}${currentKeyIndex}.mp3`);
+        cadenceTrackFile.crossOrigin = "anonymous";
+        let trackSourceNode = audioContext.createMediaElementSource(cadenceTrackFile);
         trackSourceNode.connect(masterPlaybackGain);
-        cadenceAudioElement.play();
+        cadenceTrackFile.play();
 
-        cadenceAudioElement.onended = () => {
+        cadenceTrackFile.onended = () => {
             trackSourceNode.disconnect();
             gamePrompt.innerText = "Audiate structural center... (1s Delay)";
             
-            // Reduced gap to 1 second flat
             setTimeout(() => {
                 if (activeModule !== 'ear' || currentRound === 0) return; 
                 
@@ -389,6 +388,7 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 
                 gamePrompt.innerText = "Listen closely to the target note...";
+                // Linear play: adds the scale offset straight onto your key index anchor
                 playDecodedBufferIndex(currentKeyIndex + currentTargetDegree.offset);
                 
                 setTimeout(() => {
@@ -401,38 +401,40 @@
         };
     }
 
-    // New Directional Resolution Sequence Builder (Handles Walk-down OR Walk-up)
+    // --- NEW SMOOTH RESOLUTION LINE BUILDER ---
     function playDirectionalResolution(targetDegreeIndex) {
         let walkDelay = 0;
         
-        // Scale degrees 1, 2, 3, 4 (Indices 0 through 3) walk DOWN to root index 0
+        // Lower degrees (1, 2, 3, 4) descend cleanly down to index base (offset 0)
         if (targetDegreeIndex <= 3) {
             for (let i = targetDegreeIndex; i >= 0; i--) {
                 let currentStepOffset = currentScaleProfile[i].offset;
+                let targetFileIndex = currentKeyIndex + currentStepOffset;
                 setTimeout(() => {
-                    playDecodedBufferIndex(currentKeyIndex + currentStepOffset);
+                    playDecodedBufferIndex(targetFileIndex);
                 }, walkDelay);
                 walkDelay += 350;
             }
         } 
-        // Scale degrees 5, 6, 7 (Indices 4 through 6) resolve UP to octave root (+12)
+        // Upper degrees (5, 6, 7) climb linearly to the upper root (+12 semitones up)
         else {
-            // Step up through remaining degrees
             for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
                 let currentStepOffset = currentScaleProfile[i].offset;
+                let targetFileIndex = currentKeyIndex + currentStepOffset;
                 setTimeout(() => {
-                    playDecodedBufferIndex(currentKeyIndex + currentStepOffset);
+                    playDecodedBufferIndex(targetFileIndex);
                 }, walkDelay);
                 walkDelay += 350;
             }
-            // Fire the ultimate resolved 8th/Octave root note file anchor frame
+            // Resolve directly to the high root note file (+12 semitones above base key)
             setTimeout(() => {
-                playDecodedBufferIndex(currentKeyIndex + 12); // Plays octaved Tonic root
+                playDecodedBufferIndex(currentKeyIndex + 12);
             }, walkDelay);
         }
     }
 
     function triggerNextNotePrompt() {
+        // Flashcard reads from low-octave name pool
         let randomIdx = Math.floor(Math.random() * noteStrings.length);
         currentTargetNoteName = noteStrings[randomIdx];
         flashcardDisplay.innerText = currentTargetNoteName;
@@ -458,39 +460,40 @@
         
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
-            let currentRawName = noteStrings[midiNum % 12];
+            
+            // Standardize raw input pitch index back to our low E-base layout matrix
+            let rawNoteOffset = (midiNum - 40) % 12;
+            if (rawNoteOffset < 0) rawNoteOffset += 12;
+            let currentRawName = noteStrings[rawNoteOffset];
             
             if (activeModule !== 'tuner') {
                 liveNoteDisplay.innerText = currentRawName;
                 liveNoteDisplay.className = "pitch-display detected";
             }
 
-            // Ear Trainer Processing Node
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
-                let playedOffset = (midiNum % 12) - currentKeyIndex;
+                let playedOffset = rawNoteOffset - currentKeyIndex;
                 if (playedOffset < 0) playedOffset += 12;
                 
                 if (playedOffset === currentTargetDegree.offset) {
                     gameState = "ROUND_COMPLETE"; 
                     liveNoteDisplay.className = "pitch-display match";
-                    gamePrompt.innerText = "CORRECT MATCH! Audiate line resolution...";
+                    gamePrompt.innerText = "CORRECT MATCH!";
                     
-                    // Fire directional step builder engine
                     playDirectionalResolution(currentTargetDegreeIndex);
                     
                     setTimeout(() => {
                         currentRound++;
                         executeRoundSequence();
-                    }, 2500);
+                    }, 2800); // Widen pause slightly to cover full 2-octave walk out lines
                 } else if (Date.now() - lastWrongNoteTime > 2000) {
                     let isDiatonic = currentScaleProfile.some(d => d.offset === playedOffset);
                     if (isDiatonic) {
                         lastWrongNoteTime = Date.now();
-                        gamePrompt.innerText = "Wrong scale degree! Keep searching positions...";
+                        gamePrompt.innerText = "Wrong scale degree! Keep testing positions...";
                     }
                 }
             }
-            // Flashcard Processing Node
             else if (activeModule === 'note') {
                 if (gameState === "WAITING_FOR_ANSWER" && currentRawName === currentTargetNoteName) {
                     gameState = "WAITING_FOR_NEXT_TRIGGER";
@@ -503,12 +506,15 @@
                     setTimeout(() => { triggerNextNotePrompt(); }, 600);
                 }
             }
-            // Tuner Processing Node
             else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
                 let targetMidiRounded = Math.round(exactMidi);
                 let centsFlatOrSharp = (exactMidi - targetMidiRounded) * 100; 
-                liveNoteDisplay.innerText = noteStrings[targetMidiRounded % 12];
+                
+                let tunerOffset = (targetMidiRounded - 40) % 12;
+                if (tunerOffset < 0) tunerOffset += 12;
+                
+                liveNoteDisplay.innerText = noteStrings[tunerOffset];
                 liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
                 tunerCents.innerText = `${pitch.toFixed(1)} Hz (${centsFlatOrSharp > 0 ? '+' : ''}${centsFlatOrSharp.toFixed(1)} cents)`;
                 let percentageShift = 50 + (centsFlatOrSharp * 0.9); 
