@@ -1,220 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Guitarist's Ear</title>
-    <style>
-        :root {
-            --bg-color: #121214;
-            --card-bg: #1a1a1e;
-            --primary: #6200ee;
-            --accent: #03dac6;
-            --text: #ffffff;
-            --text-muted: #a0a0a5;
-            --correct: #4caf50;
-            --incorrect: #f44336;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 750px;
-            width: 100%;
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-
-        h1 { margin-top: 0; color: var(--accent); margin-bottom: 5px;}
-        .subtitle { color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem;}
-
-        .nav-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 15px;
-        }
-
-        .tab-btn {
-            background: #2a2a30;
-            color: var(--text-muted);
-            border: 1px solid #444;
-            padding: 10px 20px;
-            font-size: 0.95rem;
-            font-weight: bold;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .module-container { display: none; }
-        .module-container.active { display: block; }
-
-        .control-row {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        select {
-            background: #2a2a30;
-            color: white;
-            border: 1px solid #444;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        .status-box {
-            background: rgba(255,255,255,0.05);
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 0.9rem;
-        }
-
-        .round-counter {
-            font-size: 1.2rem;
-            color: var(--accent);
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .pitch-display {
-            font-size: 2.8rem;
-            font-weight: bold;
-            margin: 20px 0;
-            min-height: 70px;
-            color: var(--text-muted);
-        }
-
-        .pitch-display.detected { color: var(--accent); }
-        .pitch-display.match { color: var(--correct); }
-
-        .btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin: 5px;
-        }
-        .btn:hover { filter: brightness(1.2); }
-        .btn:disabled { background-color: #444; cursor: not-allowed; }
-
-        .game-status { font-size: 1.25rem; margin: 20px 0; font-weight: 600; min-height: 35px; color: #fff; }
-
-        .degree-wheel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
-        .degree-card { background: #2a2a30; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: var(--text-muted); }
-        .degree-card.active-target { border: 2px solid var(--accent); color: var(--text); }
-
-        .flashcard-prompt { font-size: 3.5rem; font-weight: bold; color: var(--accent); margin: 20px 0; }
-
-        .tuner-container { margin: 30px 0; position: relative; }
-        .tuner-meter { width: 100%; height: 8px; background: #333; border-radius: 4px; position: relative; margin-top: 15px; }
-        .tuner-needle { width: 4px; height: 24px; background: var(--accent); position: absolute; top: -8px; left: 50%; transform: translateX(-50%); transition: left 0.1s ease-out; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Custom Audio Native Production Edition</div>
-
-    <div class="nav-tabs">
-        <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
-        <button id="tab-note" class="tab-btn" onclick="switchModule('note')">Fretboard Note Flashcards</button>
-        <button id="tab-tuner" class="tab-btn" onclick="switchModule('tuner')">Chromatic Tuner</button>
-    </div>
-
-    <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface & Cache Session Files</button>
-        <div id="audio-status">Audio Status: Disconnected</div>
-    </div>
-
-    <div class="round-counter" id="round-display" style="display:none;">Round: 0 / 5</div>
-    <div class="pitch-display" id="live-note">--</div>
-    <div class="game-status" id="game-prompt">Initialize audio components to start.</div>
-
-    <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
-
-    <div id="mod-ear" class="module-container active">
-        <div class="control-row">
-            <label for="key-select">Key Anchor Point: </label>
-            <select id="key-select">
-                <option value="8" selected>C</option>
-                <option value="9">C# / Db</option>
-                <option value="10">D</option>
-                <option value="11">D# / Eb</option>
-                <option value="0">E</option>
-                <option value="1">F</option>
-                <option value="2">F# / Gb</option>
-                <option value="3">G</option>
-                <option value="4">G# / Ab</option>
-                <option value="5">A</option>
-                <option value="6">A# / Bb</option>
-                <option value="7">B</option>
-            </select>
-
-            <label for="mode-select">Framework: </label>
-            <select id="mode-select">
-                <option value="maj" selected>Major Scale (I-IV-V-I)</option>
-                <option value="min">Natural Minor (i-iv-V-i)</option>
-            </select>
-        </div>
-        <button id="start-session-btn" class="btn" style="background-color: var(--accent); color: #000;" disabled>Start 5-Round Session (SPACEBAR)</button>
-        <div class="degree-wheel" id="wheel-container"></div>
-    </div>
-
-    <div id="mod-note" class="module-container">
-        <p>Identify the target note display card (Frets 0-5).</p>
-        <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
-        <button id="next-note-btn" class="btn" disabled>Next Flashcard (SPACEBAR)</button>
-        <div class="flashcard-prompt" id="flashcard-display">?</div>
-    </div>
-
-    <div id="mod-tuner" class="module-container">
-        <p>Pluck any string cleanly to view microtonal cents tracking metrics.</p>
-        <div class="tuner-container">
-            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 10px;" id="tuner-cents">0.0 Hz</div>
-            <div class="tuner-meter">
-                <div class="tuner-center-line"></div>
-                <div class="tuner-needle" id="tuner-needle"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let audioContext = null, analyser = null, isListening = false;
+let audioContext = null, analyser = null, isListening = false;
     let activeModule = 'ear'; 
     let gameState = "IDLE"; 
     
@@ -272,7 +56,8 @@
         
         if(!audioContext) return;
         if(target === 'ear') {
-            gamePrompt.innerText = "Ear training active. Press SPACEBAR to start a 5-round session.";
+            gamePrompt.innerText = "Ear training active. Press SPACEBAR or click below to start a 5-round session.";
+            startSessionBtn.disabled = false;
         } else if (target === 'note') {
             gamePrompt.innerText = "Press SPACEBAR to deal an enharmonic flashcard.";
             flashcardDisplay.innerText = "?";
@@ -293,18 +78,18 @@
     });
 
     startAudioBtn.addEventListener('click', async () => {
-        if (audioContext) return;
-        audioStatus.innerText = "Connecting hardware layers...";
-        audioStatus.style.color = "var(--accent)";
-        startAudioBtn.disabled = true;
-
         try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
             
-            audioStatus.innerText = "Audio Streams Ready (The Guitarist's Ear Active).";
+            audioStatus.innerText = "System Active (The Guitarist's Ear).";
             audioStatus.style.color = "var(--correct)";
+            
+            // Force buttons active immediately to prevent any lockout states
             startSessionBtn.disabled = false;
             nextNoteBtn.disabled = false;
+            startAudioBtn.disabled = true;
             switchModule(activeModule);
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -321,13 +106,12 @@
             requestAnimationFrame(updatePitchLoop);
 
         } catch (err) {
-            audioStatus.innerText = "Initialization Fault: " + err.message;
+            audioStatus.innerText = "Audio Stream Blocked: " + err.message;
             audioStatus.style.color = "var(--incorrect)";
             startAudioBtn.disabled = false;
         }
     });
 
-    // Native standalone hardware-isolated player (Bypasses Web Audio completely to secure tracking)
     function playRawTrackFile(url, delay = 0, onEndCallback = null) {
         setTimeout(() => {
             let snd = new Audio(url);
@@ -335,21 +119,33 @@
             if (onEndCallback) {
                 snd.onended = onEndCallback;
             }
-            snd.play();
+            // Catch missing files gracefully so the UI doesn't crash
+            snd.onerror = function() {
+                console.error("Failed to load audio target path: " + url);
+                gamePrompt.innerText = "Error: File not found at " + url + ". Check spelling in your folder!";
+                gameState = "IDLE";
+                startSessionBtn.disabled = false;
+            };
+            snd.play().catch(e => {
+                console.warn("Audio context playback block bypass applied.", e);
+                if (onEndCallback) onEndCallback();
+            });
         }, delay);
     }
 
     function startAutomatedSession() {
         currentRound = 1;
         roundDisplay.style.display = "block";
+        startSessionBtn.disabled = true; // Lock button during active play
         executeRoundSequence();
     }
 
     function executeRoundSequence() {
         if (currentRound > maxRounds) {
             gameState = "IDLE";
+            startSessionBtn.disabled = false;
             roundDisplay.innerText = "Session Complete!";
-            gamePrompt.innerText = "Fantastic. Press SPACEBAR to spin up another 5 rounds.";
+            gamePrompt.innerText = "Fantastic. Click or hit SPACEBAR to spin up another 5 rounds.";
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
@@ -359,7 +155,6 @@
         gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
 
-        // FIXED PATH MAPPING: Targets your numeric system file setup smoothly
         playRawTrackFile(`audio/${currentScaleMode}_${currentKeyIndex}.mp3`, 0, () => {
             gamePrompt.innerText = "Audiate structural center... (1s Delay)";
             
@@ -416,10 +211,12 @@
     nextNoteBtn.addEventListener('click', triggerNextNotePrompt);
 
     window.addEventListener('keydown', (e) => {
-        if ((e.code === "Space" || e.keyCode === 32) && gameState === "IDLE") {
-            e.preventDefault();
-            if (activeModule === 'ear') startAutomatedSession();
-            if (activeModule === 'note') triggerNextNotePrompt();
+        if (e.code === "Space" || e.keyCode === 32) {
+            if (gameState === "IDLE") {
+                e.preventDefault();
+                if (activeModule === 'ear') startAutomatedSession();
+                if (activeModule === 'note') triggerNextNotePrompt();
+            }
         }
     });
 
@@ -498,17 +295,6 @@
         requestAnimationFrame(updatePitchLoop);
     }
 
-    function renderDegreeWheel() {
-        wheelContainer.innerHTML = '';
-        currentScaleProfile.forEach((degree, idx) => {
-            const name = noteStrings[(currentKeyIndex + degree.offset) % 12];
-            const card = document.createElement('div');
-            card.className = 'degree-card'; card.id = `deg-${idx}`;
-            card.innerHTML = `${degree.name}<br><strong>${name}</strong>`;
-            wheelContainer.appendChild(card);
-        });
-    }
-
     function autoCorrelate(buffer, sampleRate) {
         let rms = 0;
         for (let i = 0; i < buffer.length; i++) { rms += buffer[i] * buffer[i]; }
@@ -520,16 +306,4 @@
         let localBuffer = buffer.subarray(r1, r2);
         let len = localBuffer.length;
         let c = new Float32Array(len);
-        for (let i = 0; i < len; i++) {
-            for (let j = 0; j < len - i; j++) { c[i] = c[i] + localBuffer[j] * localBuffer[j + i]; }
-        }
-        let d = 0; while (c[d] > c[d + 1]) d++;
-        let maxval = -1, maxpos = -1;
-        for (let i = d; i < len; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
-        let frequency = sampleRate / maxpos;
-        if (frequency > 65 && frequency < 1100) return frequency;
-        return -1;
-    }
-</script>
-</body>
-</html>
+        for (let i = 0; i < len;
