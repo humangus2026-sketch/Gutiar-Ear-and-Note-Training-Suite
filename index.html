@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Rising Resonance Suite - Raw Linear Edition</title>
+    <title>The Rising Resonance Suite - Authentic Cadence Edition</title>
     <style>
         :root {
             --bg-color: #121214;
@@ -147,7 +147,7 @@
 
 <div class="container">
     <h1>The Rising Resonance Suite</h1>
-    <div class="subtitle">Linear 24-Note Chromatic Resolution Master (Raw Audio Output Edition)</div>
+    <div class="subtitle">Custom Cadence + 24-Note Scale Run Master</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -156,7 +156,7 @@
     </div>
 
     <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface & Load Tracks</button>
+        <button id="start-audio-btn" class="btn">Enable Audio Interface</button>
         <div id="audio-status">Audio Status: Disconnected</div>
     </div>
 
@@ -166,6 +166,7 @@
 
     <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
+    <!-- MODULE 1: FUNCTIONAL EAR TRAINING -->
     <div id="mod-ear" class="module-container active">
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
@@ -186,6 +187,7 @@
         <div class="degree-wheel" id="wheel-container"></div>
     </div>
 
+    <!-- MODULE 2: FRETBOARD NOTE FLASHCARDS -->
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
@@ -193,6 +195,7 @@
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
 
+    <!-- MODULE 3: CHROMATIC TUNER -->
     <div id="mod-tuner" class="module-container">
         <p>Pluck any string cleanly to view microtonal cents tracking metrics.</p>
         <div class="tuner-container">
@@ -286,14 +289,14 @@
 
     startAudioBtn.addEventListener('click', async () => {
         if (audioContext) return;
-        audioStatus.innerText = "Linking audio streams... Please wait...";
+        audioStatus.innerText = "Linking raw audio interfaces...";
         audioStatus.style.color = "var(--accent)";
         startAudioBtn.disabled = true;
 
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            audioStatus.innerText = "Audio Tracks Linked (Raw Uncompressed Stream).";
+            audioStatus.innerText = "Audio Streams Ready (Raw Player Active).";
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false;
             nextNoteBtn.disabled = false;
@@ -301,7 +304,7 @@
             
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: { 
-                    echoCancellation: false, // Turn off browser processing to maximize raw guitar frequency fidelity
+                    echoCancellation: false, 
                     noiseSuppression: false, 
                     autoGainControl: false 
                 }, 
@@ -323,11 +326,11 @@
         }
     });
 
-    // Clean HTML5 Audio playback wrapper to entirely isolate files from context effects
+    // Clean uncompressed audio track runner
     function playRawFileTrack(url, delay = 0) {
         setTimeout(() => {
             let snd = new Audio(url);
-            snd.volume = 1.0; // Play your file cuts natively at maximum output
+            snd.volume = 1.0;
             snd.play();
         }, delay);
     }
@@ -352,6 +355,7 @@
         gamePrompt.innerText = "Streaming cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
 
+        // FIX: Re-linked directly to your recorded full cadence loops (e.g., maj3.mp3)
         let cadenceTrackFile = new Audio(`audio/${currentScaleMode}${currentKeyIndex}.mp3`);
         cadenceTrackFile.volume = 1.0;
         cadenceTrackFile.play();
@@ -366,6 +370,7 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 
                 gamePrompt.innerText = "Listen closely to the target note...";
+                // Play target prompt note from individual files
                 playRawFileTrack(`audio/${currentKeyIndex + currentTargetDegree.offset}.mp3`);
                 
                 setTimeout(() => {
@@ -378,11 +383,10 @@
         };
     }
 
-    // --- FIX: TRUE LINEAR SCALE-RUN RESOLUTION ENGINE ---
+    // Directional walk-up/down logic (Degrees 1-4 down to root, 5-7 up to octave)
     function playDirectionalResolution(targetDegreeIndex) {
         let walkDelay = 0;
         
-        // Scale degrees 1, 2, 3, 4 (Indices 0 through 3) run DOWN smoothly to base 0
         if (targetDegreeIndex <= 3) {
             for (let i = targetDegreeIndex; i >= 0; i--) {
                 let currentStepOffset = currentScaleProfile[i].offset;
@@ -391,7 +395,6 @@
                 walkDelay += 350;
             }
         } 
-        // Scale degrees 5, 6, 7 (Indices 4 through 6) continue CLIMBING step-by-step up to octave root (+12)
         else {
             for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
                 let currentStepOffset = currentScaleProfile[i].offset;
@@ -399,7 +402,6 @@
                 playRawFileTrack(`audio/${targetFileIndex}.mp3`, walkDelay);
                 walkDelay += 350;
             }
-            // Land perfectly on your higher octave tonic root file (+12 semitones up)
             playRawFileTrack(`audio/${currentKeyIndex + 12}.mp3`, walkDelay);
         }
     }
@@ -449,7 +451,6 @@
                     liveNoteDisplay.className = "pitch-display match";
                     gamePrompt.innerText = "CORRECT MATCH!";
                     
-                    // Fire directional run engine
                     playDirectionalResolution(currentTargetDegreeIndex);
                     
                     setTimeout(() => {
