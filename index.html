@@ -149,6 +149,7 @@
 
     <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
+    <!-- MODULE 1: FUNCTIONAL EAR TRAINING -->
     <div id="mod-ear" class="module-container active">
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
@@ -176,6 +177,7 @@
         <div class="degree-wheel" id="wheel-container"></div>
     </div>
 
+    <!-- MODULE 2: FRETBOARD NOTE FLASHCARDS -->
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
@@ -183,6 +185,7 @@
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
 
+    <!-- MODULE 3: CHROMATIC TUNER -->
     <div id="mod-tuner" class="module-container">
         <p>Pluck any string cleanly to view microtonal cents tracking metrics.</p>
         <div class="tuner-container">
@@ -200,7 +203,7 @@
     let activeModule = 'ear', gameState = "IDLE", currentRound = 0;
     const maxRounds = 5;
 
-    // Fixed note ring starting at C to match your file system map perfectly
+    // Fixed note ring starting at C (Index 0 = C, 1 = C#, ..., 9 = A, 11 = B)
     const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
     const scaleDefinitions = {
         maj: [
@@ -362,20 +365,23 @@
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
             
-            // Align midi offsets directly to C = 0 base mapping
+            // Standard MIDI 60 is C. This aligns the microphone input strictly to C = 0 base mapping.
             let rawNoteOffset = (midiNum - 60) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
             let currentRawName = noteStrings[rawNoteOffset];
             
             if (activeModule !== 'tuner') { liveNoteDisplay.innerText = currentRawName; liveNoteDisplay.className = "pitch-display detected"; }
 
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
-                let playedOffset = rawNoteOffset - currentKeyIndex; if (playedOffset < 0) playedOffset += 12;
-                if (playedOffset === currentTargetDegree.offset) {
+                // Determine scale degree match based on chromatic distance from the target key
+                let targetExpectedChromOffset = (currentKeyIndex + currentTargetDegree.offset) % 12;
+                
+                if (rawNoteOffset === targetExpectedChromOffset) {
                     gameState = "ROUND_COMPLETE"; liveNoteDisplay.className = "pitch-display match"; gamePrompt.innerText = "CORRECT MATCH!";
                     playDirectionalResolution(currentTargetDegreeIndex);
                     setTimeout(() => { currentRound++; executeRoundSequence(); }, 2800);
                 } else if (Date.now() - lastWrongNoteTime > 2000) {
-                    if (currentScaleProfile.some(d => d.offset === playedOffset)) { lastWrongNoteTime = Date.now(); gamePrompt.innerText = "Wrong scale degree! Keep searching..."; }
+                    let playedOffsetFromKey = rawNoteOffset - currentKeyIndex; if (playedOffsetFromKey < 0) playedOffsetFromKey += 12;
+                    if (currentScaleProfile.some(d => d.offset === playedOffsetFromKey)) { lastWrongNoteTime = Date.now(); gamePrompt.innerText = "Wrong scale degree! Keep searching..."; }
                 }
             } else if (activeModule === 'note') {
                 if (gameState === "WAITING_FOR_ANSWER" && currentRawName === currentTargetNoteName) {
