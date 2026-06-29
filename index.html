@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Guitarist's Ear</title>
+    <link rel="icon" href="data:,">
     <style>
         :root {
             --bg-color: #121214;
@@ -152,18 +153,18 @@
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
             <select id="key-select">
-                <option value="1" selected>C</option>
-                <option value="2">C# / Db</option>
-                <option value="3">D</option>
-                <option value="4">D# / Eb</option>
-                <option value="5">E</option>
-                <option value="6">F</option>
-                <option value="7">F# / Gb</option>
-                <option value="8">G</option>
-                <option value="9">G# / Ab</option>
-                <option value="10">A</option>
-                <option value="11">A# / Bb</option>
-                <option value="12">B</option>
+                <option value="0" selected>C</option>
+                <option value="1">C# / Db</option>
+                <option value="2">D</option>
+                <option value="3">D# / Eb</option>
+                <option value="4">E</option>
+                <option value="5">F</option>
+                <option value="6">F# / Gb</option>
+                <option value="7">G</option>
+                <option value="8">G# / Ab</option>
+                <option value="9">A</option>
+                <option value="10">A# / Bb</option>
+                <option value="11">B</option>
             </select>
             <label for="mode-select">Framework: </label>
             <select id="mode-select">
@@ -199,9 +200,8 @@
     let activeModule = 'ear', gameState = "IDLE", currentRound = 0;
     const maxRounds = 5;
 
-    // Fixed note ring starting cleanly at C to perfectly match your file system map
-    const noteStrings = ["", "C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
-    
+    // Fixed note ring starting at C to match your file system map perfectly
+    const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
     const scaleDefinitions = {
         maj: [
             { name: "1 (Do)", offset: 0 }, { name: "2 (Re)", offset: 2 }, { name: "3 (Mi)", offset: 4 },
@@ -214,7 +214,7 @@
     };
 
     let currentScaleProfile = scaleDefinitions.maj;
-    let currentKeyIndex = 1, currentScaleMode = "maj", currentTargetDegree = null;
+    let currentKeyIndex = 0, currentScaleMode = "maj", currentTargetDegree = null;
     let currentTargetDegreeIndex = -1, currentTargetNoteName = null, lastWrongNoteTime = 0;
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
 
@@ -339,7 +339,7 @@
     }
 
     function triggerNextNotePrompt() {
-        let randomIdx = Math.floor(Math.random() * 12) + 1;
+        let randomIdx = Math.floor(Math.random() * 12);
         currentTargetNoteName = noteStrings[randomIdx]; flashcardDisplay.innerText = currentTargetNoteName;
         gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`; gameState = "WAITING_FOR_ANSWER";
     }
@@ -362,15 +362,14 @@
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
             
-            // Re-align midi indices back cleanly to a 1-to-12 C-indexed base line map
+            // Align midi offsets directly to C = 0 base mapping
             let rawNoteOffset = (midiNum - 60) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
-            let currentFileIndex = rawNoteOffset + 1; 
-            let currentRawName = noteStrings[currentFileIndex];
+            let currentRawName = noteStrings[rawNoteOffset];
             
             if (activeModule !== 'tuner') { liveNoteDisplay.innerText = currentRawName; liveNoteDisplay.className = "pitch-display detected"; }
 
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
-                let playedOffset = currentFileIndex - currentKeyIndex; if (playedOffset < 0) playedOffset += 12;
+                let playedOffset = rawNoteOffset - currentKeyIndex; if (playedOffset < 0) playedOffset += 12;
                 if (playedOffset === currentTargetDegree.offset) {
                     gameState = "ROUND_COMPLETE"; liveNoteDisplay.className = "pitch-display match"; gamePrompt.innerText = "CORRECT MATCH!";
                     playDirectionalResolution(currentTargetDegreeIndex);
@@ -387,7 +386,7 @@
             } else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69, targetMidiRounded = Math.round(exactMidi), centsFlatOrSharp = (exactMidi - targetMidiRounded) * 100;
                 let tunerOffset = (targetMidiRounded - 60) % 12; if (tunerOffset < 0) tunerOffset += 12;
-                liveNoteDisplay.innerText = noteStrings[tunerOffset + 1]; liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
+                liveNoteDisplay.innerText = noteStrings[tunerOffset]; liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
                 tunerCents.innerText = `${pitch.toFixed(1)} Hz (${centsFlatOrSharp > 0 ? '+' : ''}${centsFlatOrSharp.toFixed(1)} cents)`;
                 tunerNeedle.style.left = `${50 + (centsFlatOrSharp * 0.9)}%`;
             }
@@ -402,7 +401,7 @@
     function renderDegreeWheel() {
         wheelContainer.innerHTML = '';
         currentScaleProfile.forEach((degree, idx) => {
-            let noteIdx = currentKeyIndex + degree.offset; if (noteIdx > 12) noteIdx -= 12;
+            let noteIdx = (currentKeyIndex + degree.offset) % 12;
             const card = document.createElement('div'); card.className = 'degree-card'; card.id = `deg-${idx}`;
             card.innerHTML = `${degree.name}<br><strong>${noteStrings[noteIdx]}</strong>`;
             wheelContainer.appendChild(card);
