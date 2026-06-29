@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Guitarist's Ear</title>
-<link rel="icon" href="data:,">
     <style>
         :root {
             --bg-color: #121214;
@@ -139,7 +138,7 @@
     </div>
 
     <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface</button>
+        <button id="start-audio-btn" class="btn">Enable Audio Interface & Cache Session Files</button>
         <div id="audio-status">Audio Status: Disconnected</div>
     </div>
 
@@ -153,18 +152,18 @@
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
             <select id="key-select">
-                <option value="8" selected>C</option>
-                <option value="9">C# / Db</option>
-                <option value="10">D</option>
-                <option value="11">D# / Eb</option>
-                <option value="0">E</option>
-                <option value="1">F</option>
-                <option value="2">F# / Gb</option>
-                <option value="3">G</option>
-                <option value="4">G# / Ab</option>
-                <option value="5">A</option>
-                <option value="6">A# / Bb</option>
-                <option value="7">B</option>
+                <option value="1" selected>C</option>
+                <option value="2">C# / Db</option>
+                <option value="3">D</option>
+                <option value="4">D# / Eb</option>
+                <option value="5">E</option>
+                <option value="6">F</option>
+                <option value="7">F# / Gb</option>
+                <option value="8">G</option>
+                <option value="9">G# / Ab</option>
+                <option value="10">A</option>
+                <option value="11">A# / Bb</option>
+                <option value="12">B</option>
             </select>
             <label for="mode-select">Framework: </label>
             <select id="mode-select">
@@ -200,7 +199,9 @@
     let activeModule = 'ear', gameState = "IDLE", currentRound = 0;
     const maxRounds = 5;
 
-    const noteStrings = ["E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B", "C", "C# / Db", "D", "D# / Eb"];
+    // Fixed note ring starting cleanly at C to perfectly match your file system map
+    const noteStrings = ["", "C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
+    
     const scaleDefinitions = {
         maj: [
             { name: "1 (Do)", offset: 0 }, { name: "2 (Re)", offset: 2 }, { name: "3 (Mi)", offset: 4 },
@@ -213,7 +214,7 @@
     };
 
     let currentScaleProfile = scaleDefinitions.maj;
-    let currentKeyIndex = 8, currentScaleMode = "maj", currentTargetDegree = null;
+    let currentKeyIndex = 1, currentScaleMode = "maj", currentTargetDegree = null;
     let currentTargetDegreeIndex = -1, currentTargetNoteName = null, lastWrongNoteTime = 0;
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
 
@@ -280,7 +281,7 @@
             let snd = new Audio(url); snd.volume = 1.0;
             if (onEndCallback) snd.onended = onEndCallback;
             snd.onerror = function() {
-                gamePrompt.innerHTML = `<span style="color:var(--incorrect)">Error: File missing at <strong>${url}</strong>.<br>Check spelling/casing in your GitHub audio folder!</span>`;
+                gamePrompt.innerHTML = `<span style="color:var(--incorrect)">Error: File missing at <strong>${url}</strong>.<br>Verify spelling and lowercase settings in GitHub audio/!</span>`;
                 gameState = "IDLE"; startSessionBtn.disabled = false;
             };
             snd.play().catch(e => { if (onEndCallback) onEndCallback(); });
@@ -299,7 +300,6 @@
         gameState = "CADENCE"; roundDisplay.innerText = `Round: ${currentRound} / 5`; gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
         
-        // This line strictly requests your pre-recorded tracking file (e.g., audio/maj_8.mp3)
         playRawTrackFile(`audio/${currentScaleMode}_${currentKeyIndex}.mp3`, 0, () => {
             gamePrompt.innerText = "Audiate center... (1s Delay)";
             setTimeout(() => {
@@ -307,7 +307,10 @@
                 currentTargetDegreeIndex = Math.floor(Math.random() * currentScaleProfile.length);
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 gamePrompt.innerText = "Listen closely to the target note...";
-                playRawTrackFile(`audio/${currentKeyIndex + currentTargetDegree.offset}.mp3`);
+                
+                let targetNoteFileNum = currentKeyIndex + currentTargetDegree.offset;
+                playRawTrackFile(`audio/${targetNoteFileNum}.mp3`);
+                
                 setTimeout(() => {
                     gamePrompt.innerText = "Find that scale degree note on your fretboard!";
                     document.getElementById(`deg-${currentTargetDegreeIndex}`).classList.add('active-target');
@@ -321,12 +324,14 @@
         let walkDelay = 0;
         if (targetDegreeIndex <= 3) {
             for (let i = targetDegreeIndex; i >= 0; i--) {
-                playRawTrackFile(`audio/${currentKeyIndex + currentScaleProfile[i].offset}.mp3`, walkDelay);
+                let noteNum = currentKeyIndex + currentScaleProfile[i].offset;
+                playRawTrackFile(`audio/${noteNum}.mp3`, walkDelay);
                 walkDelay += 350;
             }
         } else {
             for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
-                playRawTrackFile(`audio/${currentKeyIndex + currentScaleProfile[i].offset}.mp3`, walkDelay);
+                let noteNum = currentKeyIndex + currentScaleProfile[i].offset;
+                playRawTrackFile(`audio/${noteNum}.mp3`, walkDelay);
                 walkDelay += 350;
             }
             playRawTrackFile(`audio/${currentKeyIndex + 12}.mp3`, walkDelay);
@@ -334,7 +339,7 @@
     }
 
     function triggerNextNotePrompt() {
-        let randomIdx = Math.floor(Math.random() * noteStrings.length);
+        let randomIdx = Math.floor(Math.random() * 12) + 1;
         currentTargetNoteName = noteStrings[randomIdx]; flashcardDisplay.innerText = currentTargetNoteName;
         gamePrompt.innerText = `Find and play a ${currentTargetNoteName} note!`; gameState = "WAITING_FOR_ANSWER";
     }
@@ -356,12 +361,16 @@
         let pitch = autoCorrelate(buffer, audioContext.sampleRate);
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
-            let rawNoteOffset = (midiNum - 40) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
-            let currentRawName = noteStrings[rawNoteOffset];
+            
+            // Re-align midi indices back cleanly to a 1-to-12 C-indexed base line map
+            let rawNoteOffset = (midiNum - 60) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
+            let currentFileIndex = rawNoteOffset + 1; 
+            let currentRawName = noteStrings[currentFileIndex];
+            
             if (activeModule !== 'tuner') { liveNoteDisplay.innerText = currentRawName; liveNoteDisplay.className = "pitch-display detected"; }
 
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
-                let playedOffset = rawNoteOffset - currentKeyIndex; if (playedOffset < 0) playedOffset += 12;
+                let playedOffset = currentFileIndex - currentKeyIndex; if (playedOffset < 0) playedOffset += 12;
                 if (playedOffset === currentTargetDegree.offset) {
                     gameState = "ROUND_COMPLETE"; liveNoteDisplay.className = "pitch-display match"; gamePrompt.innerText = "CORRECT MATCH!";
                     playDirectionalResolution(currentTargetDegreeIndex);
@@ -377,8 +386,8 @@
                 }
             } else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69, targetMidiRounded = Math.round(exactMidi), centsFlatOrSharp = (exactMidi - targetMidiRounded) * 100;
-                let tunerOffset = (targetMidiRounded - 40) % 12; if (tunerOffset < 0) tunerOffset += 12;
-                liveNoteDisplay.innerText = noteStrings[tunerOffset]; liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
+                let tunerOffset = (targetMidiRounded - 60) % 12; if (tunerOffset < 0) tunerOffset += 12;
+                liveNoteDisplay.innerText = noteStrings[tunerOffset + 1]; liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
                 tunerCents.innerText = `${pitch.toFixed(1)} Hz (${centsFlatOrSharp > 0 ? '+' : ''}${centsFlatOrSharp.toFixed(1)} cents)`;
                 tunerNeedle.style.left = `${50 + (centsFlatOrSharp * 0.9)}%`;
             }
@@ -393,8 +402,9 @@
     function renderDegreeWheel() {
         wheelContainer.innerHTML = '';
         currentScaleProfile.forEach((degree, idx) => {
+            let noteIdx = currentKeyIndex + degree.offset; if (noteIdx > 12) noteIdx -= 12;
             const card = document.createElement('div'); card.className = 'degree-card'; card.id = `deg-${idx}`;
-            card.innerHTML = `${degree.name}<br><strong>${noteStrings[(currentKeyIndex + degree.offset) % 12]}</strong>`;
+            card.innerHTML = `${degree.name}<br><strong>${noteStrings[noteIdx]}</strong>`;
             wheelContainer.appendChild(card);
         });
     }
