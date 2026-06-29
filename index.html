@@ -138,7 +138,7 @@
     </div>
 
     <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface & Cache Session Files</button>
+        <button id="start-audio-btn" class="btn">Enable Audio Interface</button>
         <div id="audio-status">Audio Status: Disconnected</div>
     </div>
 
@@ -279,7 +279,7 @@
             let snd = new Audio(url); snd.volume = 1.0;
             if (onEndCallback) snd.onended = onEndCallback;
             snd.onerror = function() {
-                gamePrompt.innerText = "Error: File missing at " + url + ". Check names in your folder!";
+                gamePrompt.innerHTML = `<span style="color:var(--incorrect)">Error: File missing at <strong>${url}</strong>.<br>Check spelling/casing in your GitHub audio folder!</span>`;
                 gameState = "IDLE"; startSessionBtn.disabled = false;
             };
             snd.play().catch(e => { if (onEndCallback) onEndCallback(); });
@@ -295,8 +295,10 @@
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
-        gameState = "CADENCE"; roundDisplay.innerText = `Round: ${currentRound} / 5`; gamePrompt.innerText = "Streaming cadence track...";
+        gameState = "CADENCE"; roundDisplay.innerText = `Round: ${currentRound} / 5`; gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
+        
+        // This line strictly requests your pre-recorded tracking file (e.g., audio/maj_8.mp3)
         playRawTrackFile(`audio/${currentScaleMode}_${currentKeyIndex}.mp3`, 0, () => {
             gamePrompt.innerText = "Audiate center... (1s Delay)";
             setTimeout(() => {
