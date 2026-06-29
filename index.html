@@ -149,7 +149,6 @@
 
     <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
 
-    <!-- MODULE 1: FUNCTIONAL EAR TRAINING -->
     <div id="mod-ear" class="module-container active">
         <div class="control-row">
             <label for="key-select">Key Anchor Point: </label>
@@ -177,7 +176,6 @@
         <div class="degree-wheel" id="wheel-container"></div>
     </div>
 
-    <!-- MODULE 2: FRETBOARD NOTE FLASHCARDS -->
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
@@ -185,7 +183,6 @@
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
 
-    <!-- MODULE 3: CHROMATIC TUNER -->
     <div id="mod-tuner" class="module-container">
         <p>Pluck any string cleanly to view microtonal cents tracking metrics.</p>
         <div class="tuner-container">
@@ -203,8 +200,9 @@
     let activeModule = 'ear', gameState = "IDLE", currentRound = 0;
     const maxRounds = 5;
 
-    // Fixed note ring starting at C (Index 0 = C, 1 = C#, ..., 9 = A, 11 = B)
-    const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
+    // The universal note array now starts at E to match your 24 individual pitch files (0.mp3 = E)
+    const noteStrings = ["E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B", "C", "C# / Db", "D", "D# / Eb"];
+    
     const scaleDefinitions = {
         maj: [
             { name: "1 (Do)", offset: 0 }, { name: "2 (Re)", offset: 2 }, { name: "3 (Mi)", offset: 4 },
@@ -217,7 +215,8 @@
     };
 
     let currentScaleProfile = scaleDefinitions.maj;
-    let currentKeyIndex = 0, currentScaleMode = "maj", currentTargetDegree = null;
+    let cadenceKeySelection = 0; // The chosen dropdown value (0 = C, 1 = C#, etc.)
+    let currentScaleMode = "maj", currentTargetDegree = null;
     let currentTargetDegreeIndex = -1, currentTargetNoteName = null, lastWrongNoteTime = 0;
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
 
@@ -234,6 +233,12 @@
     const tunerNeedle = document.getElementById('tuner-needle');
     const tunerCents = document.getElementById('tuner-cents');
     const roundDisplay = document.getElementById('round-display');
+
+    // Helper map translating the Cadence Dropdown (C=0) directly to Fretboard Array Files (C=8)
+    function getFretboardRootOffset(cadenceIdx) {
+        let mapped = cadenceIdx + 8; 
+        return mapped >= 12 ? mapped - 12 : mapped;
+    }
 
     renderDegreeWheel();
 
@@ -256,7 +261,7 @@
         }
     }
 
-    keySelect.addEventListener('change', (e) => { currentKeyIndex = parseInt(e.target.value); renderDegreeWheel(); });
+    keySelect.addEventListener('change', (e) => { cadenceKeySelection = parseInt(e.target.value); renderDegreeWheel(); });
     modeSelect.addEventListener('change', (e) => { currentScaleMode = e.target.value; currentScaleProfile = scaleDefinitions[currentScaleMode]; renderDegreeWheel(); });
 
     startAudioBtn.addEventListener('click', async () => {
@@ -303,7 +308,8 @@
         gameState = "CADENCE"; roundDisplay.innerText = `Round: ${currentRound} / 5`; gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
         
-        playRawTrackFile(`audio/${currentScaleMode}_${currentKeyIndex}.mp3`, 0, () => {
+        // Phase 1: Fire correct backing loop cleanly using dropdown indices (C = maj_0.mp3)
+        playRawTrackFile(`audio/${currentScaleMode}_${cadenceKeySelection}.mp3`, 0, () => {
             gamePrompt.innerText = "Audiate center... (1s Delay)";
             setTimeout(() => {
                 if (activeModule !== 'ear' || currentRound === 0) return;
@@ -311,7 +317,9 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 gamePrompt.innerText = "Listen closely to the target note...";
                 
-                let targetNoteFileNum = currentKeyIndex + currentTargetDegree.offset;
+                // Phase 2: Play target test note using fretboard indices (C = 8.mp3)
+                let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
+                let targetNoteFileNum = fretboardRootIndex + currentTargetDegree.offset;
                 playRawTrackFile(`audio/${targetNoteFileNum}.mp3`);
                 
                 setTimeout(() => {
@@ -325,19 +333,20 @@
 
     function playDirectionalResolution(targetDegreeIndex) {
         let walkDelay = 0;
+        let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
         if (targetDegreeIndex <= 3) {
             for (let i = targetDegreeIndex; i >= 0; i--) {
-                let noteNum = currentKeyIndex + currentScaleProfile[i].offset;
+                let noteNum = fretboardRootIndex + currentScaleProfile[i].offset;
                 playRawTrackFile(`audio/${noteNum}.mp3`, walkDelay);
                 walkDelay += 350;
             }
         } else {
             for (let i = targetDegreeIndex; i < currentScaleProfile.length; i++) {
-                let noteNum = currentKeyIndex + currentScaleProfile[i].offset;
+                let noteNum = fretboardRootIndex + currentScaleProfile[i].offset;
                 playRawTrackFile(`audio/${noteNum}.mp3`, walkDelay);
                 walkDelay += 350;
             }
-            playRawTrackFile(`audio/${currentKeyIndex + 12}.mp3`, walkDelay);
+            playRawTrackFile(`audio/${fretboardRootIndex + 12}.mp3`, walkDelay);
         }
     }
 
@@ -365,22 +374,22 @@
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
             
-            // Standard MIDI 60 is C. This aligns the microphone input strictly to C = 0 base mapping.
-            let rawNoteOffset = (midiNum - 60) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
+            // MIDI 40 is Open E. This locks the mic input straight to your 0-indexed layout (E = 0)
+            let rawNoteOffset = (midiNum - 40) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
             let currentRawName = noteStrings[rawNoteOffset];
             
             if (activeModule !== 'tuner') { liveNoteDisplay.innerText = currentRawName; liveNoteDisplay.className = "pitch-display detected"; }
 
             if (activeModule === 'ear' && gameState === "WAITING_FOR_ANSWER") {
-                // Determine scale degree match based on chromatic distance from the target key
-                let targetExpectedChromOffset = (currentKeyIndex + currentTargetDegree.offset) % 12;
+                let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
+                let targetExpectedFretboardOffset = (fretboardRootIndex + currentTargetDegree.offset) % 12;
                 
-                if (rawNoteOffset === targetExpectedChromOffset) {
+                if (rawNoteOffset === targetExpectedFretboardOffset) {
                     gameState = "ROUND_COMPLETE"; liveNoteDisplay.className = "pitch-display match"; gamePrompt.innerText = "CORRECT MATCH!";
                     playDirectionalResolution(currentTargetDegreeIndex);
                     setTimeout(() => { currentRound++; executeRoundSequence(); }, 2800);
                 } else if (Date.now() - lastWrongNoteTime > 2000) {
-                    let playedOffsetFromKey = rawNoteOffset - currentKeyIndex; if (playedOffsetFromKey < 0) playedOffsetFromKey += 12;
+                    let playedOffsetFromKey = rawNoteOffset - fretboardRootIndex; if (playedOffsetFromKey < 0) playedOffsetFromKey += 12;
                     if (currentScaleProfile.some(d => d.offset === playedOffsetFromKey)) { lastWrongNoteTime = Date.now(); gamePrompt.innerText = "Wrong scale degree! Keep searching..."; }
                 }
             } else if (activeModule === 'note') {
@@ -391,7 +400,7 @@
                 }
             } else if (activeModule === 'tuner') {
                 let exactMidi = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69, targetMidiRounded = Math.round(exactMidi), centsFlatOrSharp = (exactMidi - targetMidiRounded) * 100;
-                let tunerOffset = (targetMidiRounded - 60) % 12; if (tunerOffset < 0) tunerOffset += 12;
+                let tunerOffset = (targetMidiRounded - 40) % 12; if (tunerOffset < 0) tunerOffset += 12;
                 liveNoteDisplay.innerText = noteStrings[tunerOffset]; liveNoteDisplay.className = Math.abs(centsFlatOrSharp) < 4 ? "pitch-display match" : "pitch-display detected";
                 tunerCents.innerText = `${pitch.toFixed(1)} Hz (${centsFlatOrSharp > 0 ? '+' : ''}${centsFlatOrSharp.toFixed(1)} cents)`;
                 tunerNeedle.style.left = `${50 + (centsFlatOrSharp * 0.9)}%`;
@@ -406,8 +415,9 @@
 
     function renderDegreeWheel() {
         wheelContainer.innerHTML = '';
+        let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
         currentScaleProfile.forEach((degree, idx) => {
-            let noteIdx = (currentKeyIndex + degree.offset) % 12;
+            let noteIdx = (fretboardRootIndex + degree.offset) % 12;
             const card = document.createElement('div'); card.className = 'degree-card'; card.id = `deg-${idx}`;
             card.innerHTML = `${degree.name}<br><strong>${noteStrings[noteIdx]}</strong>`;
             wheelContainer.appendChild(card);
