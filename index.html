@@ -130,7 +130,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Universal Audio Hardware Edition</div>
+    <div class="subtitle">Cross-Platform Hybrid Audio Suite</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -263,7 +263,6 @@
 
     startAudioBtn.addEventListener('click', async () => {
         try {
-            // FIXED hardware link: Requests hardware device native configuration automatically
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: { 
                     echoCancellation: false, 
@@ -273,11 +272,13 @@
                 video: false 
             });
 
+            // Universal Instantiation Strategy: Pulls native rates on desktops, falls back to cross-compatible configurations automatically
             if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContextClass();
             }
             
-            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Engine Active).`;
+            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Adaptive Engine).`;
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false; nextNoteBtn.disabled = false; startAudioBtn.disabled = true;
             switchModule(activeModule);
@@ -289,7 +290,7 @@
             isListening = true;
             requestAnimationFrame(updatePitchLoop);
         } catch (err) {
-            audioStatus.innerText = "Audio Interface Failure: " + err.message;
+            audioStatus.innerText = "Hardware Allocation Failed: " + err.message;
             audioStatus.style.color = "var(--incorrect)";
             startAudioBtn.disabled = false;
         }
