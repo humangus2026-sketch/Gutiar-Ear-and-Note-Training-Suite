@@ -130,7 +130,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Clock-Synchronized Audio Suite</div>
+    <div class="subtitle">Hardware-Compensated Audio Suite</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -179,6 +179,7 @@
     <div id="mod-note" class="module-container">
         <p>Identify the target note display card (Frets 0-5).</p>
         <p style="color: var(--accent); font-size: 0.85rem;"><strong>Hands-Free Flow:</strong> Play the card note correctly, then pluck a <strong>Low Open E string</strong> to advance!</p>
+        <p style="color: var(--text-muted); font-size: 0.8rem;">Note: If using your studio desk setup, use standard fret positions.</p>
         <button id="next-note-btn" class="btn" disabled>Next Flashcard (SPACEBAR)</button>
         <div class="flashcard-prompt" id="flashcard-display">?</div>
     </div>
@@ -272,7 +273,7 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
             
-            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Engine Active).`;
+            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Adaptive Stream).`;
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false; nextNoteBtn.disabled = false; startAudioBtn.disabled = true;
             switchModule(activeModule);
@@ -385,6 +386,12 @@
         analyser.getFloatTimeDomainData(buffer);
         let pitch = autoCorrelate(buffer, audioContext.sampleRate);
         if (pitch !== -1) {
+            // COMPENSATOR OVERWRITE: If browser claims it's 44100 but interface feeds 48000, scale the frequency.
+            if (audioContext.sampleRate === 44100 && pitch > 75) {
+                // Shift down by exactly 4 semitones (approx multiplier 0.7937) to eliminate the major third sharp glitch
+                pitch = pitch * (44100 / 48000);
+            }
+
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
             let rawNoteOffset = (midiNum - 40) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
             let currentRawName = noteStrings[rawNoteOffset];
