@@ -130,7 +130,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Custom Audio Production Edition</div>
+    <div class="subtitle">Feedback-Isolated Production Edition</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -200,9 +200,7 @@
     let activeModule = 'ear', gameState = "IDLE", currentRound = 0;
     const maxRounds = 5;
 
-    // The universal note array now starts at E to match your 24 individual pitch files (0.mp3 = E)
-    const noteStrings = ["E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B", "C", "C# / Db", "D", "D# / Eb"];
-    
+    const noteStrings = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
     const scaleDefinitions = {
         maj: [
             { name: "1 (Do)", offset: 0 }, { name: "2 (Re)", offset: 2 }, { name: "3 (Mi)", offset: 4 },
@@ -215,7 +213,7 @@
     };
 
     let currentScaleProfile = scaleDefinitions.maj;
-    let cadenceKeySelection = 0; // The chosen dropdown value (0 = C, 1 = C#, etc.)
+    let cadenceKeySelection = 0; 
     let currentScaleMode = "maj", currentTargetDegree = null;
     let currentTargetDegreeIndex = -1, currentTargetNoteName = null, lastWrongNoteTime = 0;
     const bufferSize = 2048, buffer = new Float32Array(bufferSize);
@@ -234,7 +232,6 @@
     const tunerCents = document.getElementById('tuner-cents');
     const roundDisplay = document.getElementById('round-display');
 
-    // Helper map translating the Cadence Dropdown (C=0) directly to Fretboard Array Files (C=8)
     function getFretboardRootOffset(cadenceIdx) {
         let mapped = cadenceIdx + 8; 
         return mapped >= 12 ? mapped - 12 : mapped;
@@ -305,10 +302,13 @@
             document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
             return;
         }
-        gameState = "CADENCE"; roundDisplay.innerText = `Round: ${currentRound} / 5`; gamePrompt.innerText = "Streaming your custom recorded cadence track...";
+        
+        // HARD LOCK: Freeze input evaluation during the cadence sequence to block speaker bleed
+        gameState = "CADENCE"; 
+        roundDisplay.innerText = `Round: ${currentRound} / 5`; 
+        gamePrompt.innerText = "Streaming your custom recorded cadence track...";
         document.querySelectorAll('.degree-card').forEach(el => el.classList.remove('active-target'));
         
-        // Phase 1: Fire correct backing loop cleanly using dropdown indices (C = maj_0.mp3)
         playRawTrackFile(`audio/${currentScaleMode}_${cadenceKeySelection}.mp3`, 0, () => {
             gamePrompt.innerText = "Audiate center... (1s Delay)";
             setTimeout(() => {
@@ -317,16 +317,23 @@
                 currentTargetDegree = currentScaleProfile[currentTargetDegreeIndex];
                 gamePrompt.innerText = "Listen closely to the target note...";
                 
-                // Phase 2: Play target test note using fretboard indices (C = 8.mp3)
                 let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
                 let targetNoteFileNum = fretboardRootIndex + currentTargetDegree.offset;
-                playRawTrackFile(`audio/${targetNoteFileNum}.mp3`);
                 
-                setTimeout(() => {
-                    gamePrompt.innerText = "Find that scale degree note on your fretboard!";
-                    document.getElementById(`deg-${currentTargetDegreeIndex}`).classList.add('active-target');
-                    gameState = "WAITING_FOR_ANSWER";
-                }, 1200);
+                // Play target prompt file directly
+                playRawTrackFile(`audio/${targetNoteFileNum}.mp3`, 0, () => {
+                    gamePrompt.innerText = "Stabilizing room air... (500ms Mute Gate)";
+                    
+                    // HARD CHOP: Wait exactly 500ms after note playback finishes completely before opening microphone ears
+                    setTimeout(() => {
+                        if (activeModule === 'ear' && currentRound > 0) {
+                            gamePrompt.innerText = "Find that scale degree note on your fretboard!";
+                            document.getElementById(`deg-${currentTargetDegreeIndex}`).classList.add('active-target');
+                            gameState = "WAITING_FOR_ANSWER";
+                        }
+                    }, 500);
+                });
+                
             }, 1000);
         });
     }
@@ -373,8 +380,6 @@
         let pitch = autoCorrelate(buffer, audioContext.sampleRate);
         if (pitch !== -1) {
             let midiNum = Math.round(12 * (Math.log(pitch / 440) / Math.log(2))) + 69;
-            
-            // MIDI 40 is Open E. This locks the mic input straight to your 0-indexed layout (E = 0)
             let rawNoteOffset = (midiNum - 40) % 12; if (rawNoteOffset < 0) rawNoteOffset += 12;
             let currentRawName = noteStrings[rawNoteOffset];
             
