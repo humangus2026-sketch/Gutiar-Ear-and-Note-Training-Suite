@@ -130,7 +130,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Feedback-Isolated Production Edition</div>
+    <div class="subtitle">Universal Audio Hardware Edition</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -139,7 +139,7 @@
     </div>
 
     <div class="status-box">
-        <button id="start-audio-btn" class="btn">Enable Audio Interface & Cache Session Files</button>
+        <button id="start-audio-btn" class="btn">Enable Audio Interface</button>
         <div id="audio-status">Audio Status: Disconnected</div>
     </div>
 
@@ -263,19 +263,33 @@
 
     startAudioBtn.addEventListener('click', async () => {
         try {
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            audioStatus.innerText = "System Active (The Guitarist's Ear).";
+            // FIXED hardware link: Requests hardware device native configuration automatically
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { 
+                    echoCancellation: false, 
+                    noiseSuppression: false, 
+                    autoGainControl: false 
+                }, 
+                video: false 
+            });
+
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Engine Active).`;
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false; nextNoteBtn.disabled = false; startAudioBtn.disabled = true;
             switchModule(activeModule);
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
+            
             let microphone = audioContext.createMediaStreamSource(stream);
-            analyser = audioContext.createAnalyser(); analyser.fftSize = bufferSize;
+            analyser = audioContext.createAnalyser(); 
+            analyser.fftSize = bufferSize;
             microphone.connect(analyser);
             isListening = true;
             requestAnimationFrame(updatePitchLoop);
         } catch (err) {
-            audioStatus.innerText = "Audio Stream Blocked: " + err.message;
+            audioStatus.innerText = "Audio Interface Failure: " + err.message;
             audioStatus.style.color = "var(--incorrect)";
             startAudioBtn.disabled = false;
         }
@@ -286,7 +300,7 @@
             let snd = new Audio(url); snd.volume = 1.0;
             if (onEndCallback) snd.onended = onEndCallback;
             snd.onerror = function() {
-                gamePrompt.innerHTML = `<span style="color:var(--incorrect)">Error: File missing at <strong>${url}</strong>.<br>Verify spelling and lowercase settings in GitHub audio/!</span>`;
+                gamePrompt.innerHTML = `<span style="color:var(--incorrect)">Error: File missing at <strong>${url}</strong>.</span>`;
                 gameState = "IDLE"; startSessionBtn.disabled = false;
             };
             snd.play().catch(e => { if (onEndCallback) onEndCallback(); });
@@ -303,7 +317,6 @@
             return;
         }
         
-        // HARD LOCK: Freeze input evaluation during the cadence sequence to block speaker bleed
         gameState = "CADENCE"; 
         roundDisplay.innerText = `Round: ${currentRound} / 5`; 
         gamePrompt.innerText = "Streaming your custom recorded cadence track...";
@@ -320,11 +333,9 @@
                 let fretboardRootIndex = getFretboardRootOffset(cadenceKeySelection);
                 let targetNoteFileNum = fretboardRootIndex + currentTargetDegree.offset;
                 
-                // Play target prompt file directly
                 playRawTrackFile(`audio/${targetNoteFileNum}.mp3`, 0, () => {
                     gamePrompt.innerText = "Stabilizing room air... (500ms Mute Gate)";
                     
-                    // HARD CHOP: Wait exactly 500ms after note playback finishes completely before opening microphone ears
                     setTimeout(() => {
                         if (activeModule === 'ear' && currentRound > 0) {
                             gamePrompt.innerText = "Find that scale degree note on your fretboard!";
