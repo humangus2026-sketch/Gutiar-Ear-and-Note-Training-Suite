@@ -130,7 +130,7 @@
 
 <div class="container">
     <h1>The Guitarist's Ear</h1>
-    <div class="subtitle">Cross-Platform Hybrid Audio Suite</div>
+    <div class="subtitle">Clock-Synchronized Audio Suite</div>
 
     <div class="nav-tabs">
         <button id="tab-ear" class="tab-btn active" onclick="switchModule('ear')">Functional Ear Training</button>
@@ -264,21 +264,15 @@
     startAudioBtn.addEventListener('click', async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: false, 
-                    noiseSuppression: false, 
-                    autoGainControl: false 
-                }, 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
                 video: false 
             });
 
-            // Universal Instantiation Strategy: Pulls native rates on desktops, falls back to cross-compatible configurations automatically
             if (!audioContext) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                audioContext = new AudioContextClass();
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
             
-            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Adaptive Engine).`;
+            audioStatus.innerText = `Connected (${audioContext.sampleRate}Hz Engine Active).`;
             audioStatus.style.color = "var(--correct)";
             startSessionBtn.disabled = false; nextNoteBtn.disabled = false; startAudioBtn.disabled = true;
             switchModule(activeModule);
